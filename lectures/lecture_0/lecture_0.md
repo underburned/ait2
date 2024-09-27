@@ -11,7 +11,9 @@
 3. [SSH-клиенты](#03-ssh-клиенты)
 4. [Файлы настроек SSH](#04-файлы-настроек-ssh)
 5. [Генерация ключей](#05-генерация-ключей)
-6. 
+6. [Настройка сервера и клиента](#06-настройка-сервера-и-клиента)
+7. [Настройка файервола UFW](#07-настройка-файервола-ufw)
+8. [Туннелирование SSH](#08-туннелирование-ssh)
 
 ### 0.1 Введение
 
@@ -30,7 +32,7 @@ SSH-сервер обычно прослушивает соединения на
 
 3 режима аутентификации:
 - Аутентификация по паролю.  
-  Наиболее распространенный вариант. Вводить пароль необходтио при каждом подключении. Пароль передается в зашифрованном виде.  
+  Наиболее распространенный вариант. Вводить пароль необходимо при каждом подключении. Пароль передается в зашифрованном виде.  
 - Аутентификация по ключевой паре.  
   Предварительно генерируется публичный (открытый) и приватный (закрытый) ключи (`pulic key` и `private key`) для определённого пользователя. На машине, с которой требуется произвести подключение, хранится приватный и публичный ключи, а на удалённой машине &ndash; публичный. Эти файлы не передаются при аутентификации, система лишь проверяет, что владелец публичного ключа также владеет и приватным. При данном подходе, как правило, настраивается автоматический вход от имени конкретного пользователя в ОС.
 - Аутентификация по IP-адресу.  
@@ -663,7 +665,7 @@ KbdInteractiveAuthentication no
 UsePAM no
 ```
 
-Сохраняем изменения (Ctrl-O) и выходим (Ctrl-X):
+Сохраняем изменения `Ctrl-O` и выходим `Ctrl-X`:
 
 <div align="center">
   <br>
@@ -691,6 +693,12 @@ UsePAM no
   > - [PasswordAuthentication yes или UsePAM yes](https://www.linux.org.ru/forum/admin/14884566)
   > - [Непонятное в SSH](https://www.linux.org.ru/forum/admin/12826308)
 
+> Порт на сервере необходимо открыть. Если в ОС установлен файерволл, необходимо разрешить подключение через выбранный порт, например, с использованием `UFW` в Убунте:
+> ```bash
+> sudo ufw allow 2222
+> ```
+> UFW (Uncomplicated Firewall) — удобный интерфейс для управления политиками безопасности межсетевого экрана.
+
 Перезапускаем службу:
 
 ```bash
@@ -698,3 +706,415 @@ systemctl reload sshd.service
 ```
 
 #### Настройка клиента
+
+##### Linux
+
+В домашней директории пользователя необходимо создать папку `.ssh` и поместить в нее пару ключей:
+
+```bash
+mkdir /home/alex/.ssh/
+chmod 700 /home/ud/.ssh/
+chown -R alex:alex /home/alex/.ssh/
+```
+
+При этом у приватного ключа права доступа должны иметь значение $600$ или `-rw-------`, у публичного ключа &ndash; $644$ или `-rw-r--r--`.
+
+> Для просмотра прав доступа к файлу можно воспользоваться утилитой `ls` для отображения прав доступа в human readable формате или `stat` для вывода в восьмеричном виде (octal notation):
+> ```bash
+> ls -l ~/.ssh/id_rsa_gitlab.pub
+> stat -c "%a %n" ~/.ssh/id_rsa_gitlab.pub
+> ```
+
+##### Windows
+
+В домашней директории пользователя необходимо создать папку `.ssh` и поместить в нее пару ключей.
+
+#### Проверка соединения
+
+Например, имеются следующие данные для SSH соединения:
+- Имя хоста: `r340.ddns.net`
+- Имя учетной записи: `ruser`
+- Порт для SSH: `34034`
+- Имя приватного ключа: `id_ed25519_ruser`
+
+Тогда команда для подключения будет выглядеть следующим образом:
+
+```commandline
+ssh -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_ruser
+```
+
+Если все прошло успешно, то в SSH клиенте мы увидим консоль (терминал) сервера:
+
+<div align="center">
+  <br>
+  <img src="images/SSH_success.png" width="800" title="SSH OK"/>
+    <p style="text-align: center">
+        Рисунок 11 &ndash; Успешное соединение через SSH
+    </p>
+</div>
+
+Если неуспех, то необходимо провести отладку.
+
+#### Отладка на стороне клиента
+
+Самой распространенной причиной возникновения ошибки при соединении с сервером через SSH являются разрешения (права доступа). Необходимо проверить владельца папки `.ssh`, установленные права для публичного и приватного ключей. Пример ошибки:
+
+<div align="center">
+  <br>
+  <img src="images/Bad_permissions_1.png" width="800" title="SSH bad permissions 1"/>
+    <p style="text-align: center">
+        Рисунок 12 &ndash; Ошибка при подключении через SSH с использованием ключей
+    </p>
+</div>
+
+В данном случае причина ошибки очевидна: `Bad permissions`, `Permissions for 'C:\\Users\\UD\\.ssh\\id_ed25519_pc340_ruser' are too open. It is required that your private key files are NOT accessible by others.`
+
+Данный ключ был создан на сервере под Убунтой, в атрибутах в списке владельцев на стороне клиента (Windows) присутствует неизвестная учетная запись. Подсказано решение: убрать учетную запись `UNKNOWN\\UNKNOWN (S-1-5-21-298041677-3583488911-3265851412-1001)` из списка владельцев. Для этого в свойствах файла (приватный ключ в данном случае) на вкладке `Безопасность` нужно нажать на кнопку `Дополнительно`:
+
+<div align="center">
+  <br>
+  <img src="images/Bad_permissions_2.png" width="767" title="SSH bad permissions 2"/>
+    <p style="text-align: center">
+        Рисунок 13 &ndash; Дополнительные параметры безопасности
+    </p>
+</div>
+
+В открывшемся окне необходимо удалить неизвестную учетную запись. Если нажать удалить, то выскочет сообщение об ошибке:
+
+<div align="center">
+  <br>
+  <img src="images/Bad_permissions_3.png" width="406" title="SSH bad permissions 3"/>
+    <p style="text-align: center">
+        Рисунок 14 &ndash; Дополнительные параметры безопасности
+    </p>
+</div>
+
+Сначала необходимо отключить наследование с преобразованием унаследованных разрешений в явные:
+
+<div align="center">
+  <br>
+  <img src="images/Bad_permissions_4.png" width="542" title="SSH bad permissions 4"/>
+    <p style="text-align: center">
+        Рисунок 15 &ndash; Дополнительные параметры безопасности
+    </p>
+</div>
+
+И затем удалить неизвестную учетную запись. После нажать `Применить` и/или `OK`. Повторно осуществить попытку подключения:
+
+<div align="center">
+  <br>
+  <img src="images/Bad_permissions_5.png" width="800" title="SSH bad permissions 5"/>
+    <p style="text-align: center">
+        Рисунок 16 &ndash; Дополнительные параметры безопасности
+    </p>
+</div>
+
+> Если ошибка неочевидная, можно вывести отладочную информацию при подключении с использованием флага `-v` (`verbose`; `-vv` &ndash; второй уровень, `-vvv` &ndash; третий и т.д.):
+> ```bash
+> ssh -v -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_pc340_ruser
+> ```
+
+Пример:
+
+<div align="center">
+  <br>
+  <img src="images/SSH_debug_1.png" width="800" title="SSH debug 1"/>
+    <p style="text-align: center">
+        Рисунок 17 &ndash; Отладка SSH подключения на клиенте
+    </p>
+</div>
+
+#### Отладка на стороне сервера
+
+Для отладки SSH на стороне сервера необходимо включить вывод отладочной информации `sshd` в логи. Для этого в `sshd_config` необходимо раскомментировать или добавить следующие строки:
+
+```nano
+#SyslogFacility AUTH
+#LogLevel INFO
+```
+
+При этом в `LogLevel` прописать значение `DEBUG3` (3 &ndash; уровень дебага). Сохранить конфиг и перезапустить службу.
+
+Для просмотра системных сообщений в журнале необходимо воспользоваться утилитой `journalctl`:
+
+```bash
+journalctl -n 100 --no-pager -xu ssh
+```
+
+Данная команда выведет последние 100 записей, связанных с ssh.
+
+Пример вывода:
+
+```bash
+сен 28 00:37:26 udupc sshd[2234841]: Failed password for invalid user admin from 92.255.85.253 port 44051 ssh2
+сен 28 00:37:27 udupc sshd[2234841]: Connection reset by invalid user admin 92.255.85.253 port 44051 [preauth]
+сен 28 00:45:18 udupc sshd[2239642]: error: kex_protocol_error: type 20 seq 2 [preauth]
+сен 28 00:45:18 udupc sshd[2239642]: error: kex_protocol_error: type 30 seq 3 [preauth]
+сен 28 00:45:19 udupc sshd[2239642]: error: kex_protocol_error: type 20 seq 4 [preauth]
+сен 28 00:45:19 udupc sshd[2239642]: error: kex_protocol_error: type 30 seq 5 [preauth]
+сен 28 00:45:21 udupc sshd[2239642]: error: kex_protocol_error: type 20 seq 6 [preauth]
+сен 28 00:45:21 udupc sshd[2239642]: error: kex_protocol_error: type 30 seq 7 [preauth]
+сен 28 00:45:49 udupc sshd[2239642]: Connection reset by 139.59.36.72 port 6116 [preauth]
+сен 28 00:47:07 udupc sshd[2240739]: Invalid user reboot from 185.234.216.97 port 11356
+сен 28 00:47:07 udupc sshd[2240739]: pam_unix(sshd:auth): check pass; user unknown
+сен 28 00:47:07 udupc sshd[2240739]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=185.234.216.97
+сен 28 00:47:09 udupc sshd[2240739]: Failed password for invalid user reboot from 185.234.216.97 port 11356 ssh2
+сен 28 00:47:09 udupc sshd[2240739]: Received disconnect from 185.234.216.97 port 11356:11: Client disconnecting normally [preauth]
+сен 28 00:47:09 udupc sshd[2240739]: Disconnected from invalid user reboot 185.234.216.97 port 11356 [preauth]
+```
+
+> В тестовом режиме данная машина через службу DDNS была доступна извне, по логу видно, что авторизоваться пытались с учетными записями `admin`, `reboot` и др.
+
+Так выглядит пример журнала с включенным дебагом SSH соединения на сервере:
+
+```bash
+Sep 27 20:57:14 vm860617 sshd[917749]: debug3: fd 7 is O_NONBLOCK
+Sep 27 20:57:14 vm860617 sshd[917749]: debug3: send packet: type 99
+Sep 27 20:57:14 vm860617 sshd[917779]: debug1: Setting controlling tty using TIOCSCTTY.
+Sep 27 20:57:14 vm860617 sshd[917779]: debug3: Normalising mapped IPv4 in IPv6 address
+Sep 27 20:57:14 vm860617 sshd[917749]: debug3: receive packet: type 98
+Sep 27 20:57:14 vm860617 sshd[917749]: debug1: server_input_channel_req: channel 1 request window-change reply 0
+Sep 27 20:57:14 vm860617 sshd[917749]: debug1: session_by_channel: session 1 channel 1
+Sep 27 20:57:14 vm860617 sshd[917749]: debug1: session_input_channel_req: session 1 req window-change
+Sep 27 20:57:15 vm860617 sshd[917749]: debug3: receive packet: type 98
+Sep 27 20:57:15 vm860617 sshd[917749]: debug1: server_input_channel_req: channel 1 request window-change reply 0
+Sep 27 20:57:15 vm860617 sshd[917749]: debug1: session_by_channel: session 1 channel 1
+Sep 27 20:57:15 vm860617 sshd[917749]: debug1: session_input_channel_req: session 1 req window-change
+Sep 27 20:57:19 vm860617 sshd[917749]: debug3: receive packet: type 80
+Sep 27 20:57:19 vm860617 sshd[917749]: debug1: server_input_global_request: rtype keepalive@openssh.com want_reply 1
+Sep 27 20:57:19 vm860617 sshd[917749]: debug3: send packet: type 82
+Sep 27 20:57:24 vm860617 sshd[917749]: debug3: receive packet: type 80
+Sep 27 20:57:24 vm860617 sshd[917749]: debug1: server_input_global_request: rtype keepalive@openssh.com want_reply 1
+Sep 27 20:57:24 vm860617 sshd[917749]: debug3: send packet: type 82
+```
+
+По сообщениям в журнале можно понять, на каком этапе возникает "неуспех" и отладить.
+
+### 0.7 Настройка файервола UFW
+
+Источник: [Настройка фаервола в Ubuntu с помощью утилиты UFW](https://selectel.ru/blog/tutorials/how-to-configure-firewall-with-ufw-on-ubuntu-20/)
+
+Установка:
+
+```bash
+sudo apt install ufw
+```
+
+Проверка состояния UFW с помощью команды:
+
+```bash
+sudo ufw status verbose
+```
+
+По умолчанию UFW отключен, так что вы должны увидеть что-то вроде этого:
+```bash
+Status: inactive
+```
+
+Пример с включенным UFW:
+
+```bash
+ud@udupc:~$ sudo ufw status verbose
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+22/tcp (OpenSSH)           ALLOW IN    Anywhere                  
+9000/tcp                   ALLOW IN    Anywhere                  
+80/tcp (Nginx HTTP)        ALLOW IN    Anywhere                  
+443                        ALLOW IN    Anywhere                  
+22/tcp (OpenSSH (v6))      ALLOW IN    Anywhere (v6)             
+9000/tcp (v6)              ALLOW IN    Anywhere (v6)             
+80/tcp (Nginx HTTP (v6))   ALLOW IN    Anywhere (v6)             
+443 (v6)                   ALLOW IN    Anywhere (v6
+```
+
+#### Начальная настройка
+
+По умолчанию настройки UFW запрещают все входящие соединения и разрешают все исходящие. Это значит, что если кто-то попытается подключиться к серверу, он не сможет этого сделать, в то время как любое приложение на сервере имеет доступ к внешним соединениям.
+
+Cоответствующие правила фаервола прописываются так:
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+```
+
+##### SSH
+
+Чтобы разрешить входящие SSH-соединения, необходимо выполнить команду:
+
+```bash
+sudo ufw allow ssh
+```
+
+SSH демон по умолчанию прослушивает $22$ порт. UFW знает об именах распространенных служб (ssh, sftp, http, https), поэтому можно использовать их вместо номера порта.
+
+Если SSH-демон использует другой порт, то необходимо указать его в явном виде, например:
+
+```bash
+sudo ufw allow 2222
+```
+
+#### Запуск UFW
+
+Чтобы включить UFW, необходимо выполнить следующую команду:
+
+```bash
+sudo ufw enable
+```
+
+Появится похожее предупреждение:
+
+```bash
+Command may disrupt existing ssh connections. Proceed with operation (y|n)?
+```
+
+Это означает, что запуск этого сервиса может разорвать текущее SSH соединение.
+
+#### Добавление диапазонов портов
+
+```bash
+sudo ufw allow 3000:3100
+```
+
+Также можно указать конкретный протокол:
+
+```bash
+sudo ufw allow 3000:3100/tcp
+sudo ufw allow 3000:3100/udp
+```
+
+#### Добавление IP-адресов
+
+Можно указать IP-адрес, которому будет разрешен доступ ко всем портам сервера:
+
+```bash
+sudo ufw allow from 123.45.67.89
+```
+
+Или к конкретному порту:
+
+```bash
+sudo ufw allow from 123.45.67.89 to any port 22
+```
+
+Аналогичным образом можно добавить правила для диапазонов IP-адресов:
+
+```bash
+sudo ufw allow from 123.45.67.89/24
+sudo ufw allow from 123.45.67.89/24 to any port 22
+```
+
+#### Ограничение подключений
+
+Команды аналогичны разрешающим правилам:
+
+```bash
+sudo ufw deny http
+sudo ufw deny from 123.45.67.89
+```
+
+#### Удаление правил
+
+Существует два способа удаления правил:
+- По номеру правила
+- По фактическому правилу
+
+Для вывода пронумерованных правил необходимо выполнить команду:
+
+```bash
+sudo ufw status numbered
+```
+
+Пример вывода:
+
+```bash
+$ sudo ufw status numbered
+[sudo] password for ud: 
+Sorry, try again.
+[sudo] password for ud: 
+Status: active
+
+     To                         Action      From
+     --                         ------      ----
+[ 1] OpenSSH                    ALLOW IN    Anywhere                  
+[ 2] 9000/tcp                   ALLOW IN    Anywhere                  
+[ 3] Nginx HTTP                 ALLOW IN    Anywhere                  
+[ 4] 443                        ALLOW IN    Anywhere                  
+[ 5] OpenSSH (v6)               ALLOW IN    Anywhere (v6)             
+[ 6] 9000/tcp (v6)              ALLOW IN    Anywhere (v6)             
+[ 7] Nginx HTTP (v6)            ALLOW IN    Anywhere (v6)             
+[ 8] 443 (v6)                   ALLOW IN    Anywhere (v6
+```
+
+Пример удаления по номеру:
+
+```bash
+sudo ufw delete 2
+```
+
+Пример удаления по фактическому правилу:
+
+```bash
+sudo ufw delete allow 80
+```
+
+#### Отключение UFW
+
+```bash
+sudo ufw disable
+```
+
+#### Сброс правил
+
+```bash
+sudo ufw reset
+```
+
+#### Логи
+
+В UFW есть опция сохранения логов &ndash; журнал событий. Для запуска необходимо выполнить команду:
+
+```bash
+sudo ufw logging on
+```
+
+UFW поддерживает несколько уровней логирования:
+- `off` &ndash; отключен.
+- `low` &ndash; регистрирует все заблокированные пакеты, не соответствующие заданной политике (с ограничением скорости), а также пакеты, соответствующие зарегистрированным правилам.
+- `medium` &ndash; все то, что при значении `low`. Плюс все разрешенные пакеты, не соответствующие заданной политике, все недопустимые пакеты, и все новые соединения. Все записи ведутся с ограничением скорости.
+- `high` &ndash; работает так же, как и `medium`. Плюс все пакеты с ограничением скорости.
+- `full` &ndash; так же, как и `high`, но без ограничения скорости. 
+
+Чтобы задать уровень, необходимо указать его как параметр:
+
+```bash
+sudo ufw logging high
+```
+
+По умолчанию используется уровень `low`.
+
+Для просмотра списка файлов-логов UFW необходимо выполнить команду:
+
+```bash
+ls /var/log/ufw*
+```
+
+Пример вывода:
+
+```bash
+$ ls /var/log/ufw*
+/var/log/ufw.log  /var/log/ufw.log.1  /var/log/ufw.log.2.gz  /var/log/ufw.log.3.gz  /var/log/ufw.log.4.gz
+```
+
+Просмотр содержимого лога:
+
+```bash
+cat /var/log/ufw.log
+```
+
+### 0.8 Туннелирование SSH
