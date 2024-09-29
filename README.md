@@ -1,7 +1,7 @@
 # Технологии искусственного интеллекта. Семестр 2
 
 ## Лекции
-0. [SSH WIP](lectures/lecture_0/lecture_0.md)
+0. [SSH](lectures/lecture_0/lecture_0.md)
 
 ## Лабораторные работы
 TBD
