@@ -15,6 +15,8 @@
 7. [Настройка файервола UFW](#07-настройка-файервола-ufw)
 8. [Туннелирование SSH](#08-туннелирование-ssh)
 9. [Обратное туннелирование SSH](#09-обратное-туннелирование-ssh)
+10. [Файл конфигурации config](#010-файл-конфигурации-config)
+11. [Разное](#011-разное)
 
 ### 0.1 Введение
 
@@ -733,15 +735,15 @@ chown -R alex:alex /home/alex/.ssh/
 #### Проверка соединения
 
 Например, имеются следующие данные для SSH соединения:
-- Имя хоста: `r340.ddns.net`
+- Имя хоста: `relay-server.net`
 - Имя учетной записи: `ruser`
-- Порт для SSH: `34034`
+- Порт для SSH: `7777`
 - Имя приватного ключа: `id_ed25519_ruser`
 
 Тогда команда для подключения будет выглядеть следующим образом:
 
 ```commandline
-ssh -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_ruser
+ssh -p 7777 ruser@relay-server -i C:\Users\UD\.ssh\id_ed25519_ruser
 ```
 
 Если все прошло успешно, то в SSH клиенте мы увидим консоль (терминал) сервера:
@@ -756,6 +758,16 @@ ssh -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_ruser
 
 Если неуспех, то необходимо провести отладку.
 
+> При первом подключении к неизвестному хосту клиент выведет сообщение с хешем публичного ключа:
+> 
+> <div align="center">
+>  <br>
+>  <img src="images/Host_key_fingerprint_Tabby.png" width="800" title="SSH fingerprint"/>
+>    <p style="text-align: center">
+>        Рисунок 12 &ndash; Первое подключение к неизвестному хосту
+>    </p>
+> </div>
+
 #### Отладка на стороне клиента
 
 Самой распространенной причиной возникновения ошибки при соединении с сервером через SSH являются разрешения (права доступа). Необходимо проверить владельца папки `.ssh`, установленные права для публичного и приватного ключей. Пример ошибки:
@@ -764,7 +776,7 @@ ssh -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_ruser
   <br>
   <img src="images/Bad_permissions_1.png" width="800" title="SSH bad permissions 1"/>
     <p style="text-align: center">
-        Рисунок 12 &ndash; Ошибка при подключении через SSH с использованием ключей
+        Рисунок 13 &ndash; Ошибка при подключении через SSH с использованием ключей
     </p>
 </div>
 
@@ -776,7 +788,7 @@ ssh -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_ruser
   <br>
   <img src="images/Bad_permissions_2.png" width="767" title="SSH bad permissions 2"/>
     <p style="text-align: center">
-        Рисунок 13 &ndash; Дополнительные параметры безопасности
+        Рисунок 14 &ndash; Дополнительные параметры безопасности
     </p>
 </div>
 
@@ -786,7 +798,7 @@ ssh -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_ruser
   <br>
   <img src="images/Bad_permissions_3.png" width="406" title="SSH bad permissions 3"/>
     <p style="text-align: center">
-        Рисунок 14 &ndash; Дополнительные параметры безопасности
+        Рисунок 15 &ndash; Дополнительные параметры безопасности
     </p>
 </div>
 
@@ -796,7 +808,7 @@ ssh -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_ruser
   <br>
   <img src="images/Bad_permissions_4.png" width="542" title="SSH bad permissions 4"/>
     <p style="text-align: center">
-        Рисунок 15 &ndash; Дополнительные параметры безопасности
+        Рисунок 16 &ndash; Дополнительные параметры безопасности
     </p>
 </div>
 
@@ -806,13 +818,13 @@ ssh -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_ruser
   <br>
   <img src="images/Bad_permissions_5.png" width="800" title="SSH bad permissions 5"/>
     <p style="text-align: center">
-        Рисунок 16 &ndash; Дополнительные параметры безопасности
+        Рисунок 17 &ndash; Дополнительные параметры безопасности
     </p>
 </div>
 
 > Если ошибка неочевидная, можно вывести отладочную информацию при подключении с использованием флага `-v` (`verbose`; `-vv` &ndash; второй уровень, `-vvv` &ndash; третий и т.д.):
 > ```bash
-> ssh -v -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_pc340_ruser
+> ssh -v -p 7777 ruser@relay_server.net -i C:\Users\UD\.ssh\id_ed25519_pc340_ruser
 > ```
 
 Пример:
@@ -821,7 +833,7 @@ ssh -p 34034 ruser@r340.ddns.net -i C:\Users\UD\.ssh\id_ed25519_ruser
   <br>
   <img src="images/SSH_debug_1.png" width="800" title="SSH debug 1"/>
     <p style="text-align: center">
-        Рисунок 17 &ndash; Отладка SSH подключения на клиенте
+        Рисунок 18 &ndash; Отладка SSH подключения на клиенте
     </p>
 </div>
 
@@ -1144,7 +1156,7 @@ cat /var/log/ufw.log
   <br>
   <img src="images/SSH_port_forward_local.svg" width="530" title="SSH port forward local"/>
     <p style="text-align: center">
-        Рисунок 18 &ndash; Проброс локального порта
+        Рисунок 19 &ndash; Проброс локального порта
     </p>
 </div>
 
@@ -1188,7 +1200,7 @@ AllowTcpForwarding yes
   <br>
   <img src="images/SSH_port_forward_remote.svg" width="530" title="SSH port forward remote"/>
     <p style="text-align: center">
-        Рисунок 19 &ndash; Проброс удаленного порта
+        Рисунок 20 &ndash; Проброс удаленного порта
     </p>
 </div>
 
@@ -1240,7 +1252,7 @@ ssh -R :22223:localhost:22 me@server -p 2222
   <br>
   <img src="images/SSH_port_forward_dynamic.svg" width="530" title="SSH port forward dynamic"/>
     <p style="text-align: center">
-        Рисунок 20 &ndash; Динамический проброс портов
+        Рисунок 21 &ndash; Динамический проброс портов
     </p>
 </div>
 
@@ -1295,7 +1307,7 @@ ssh -o "ProxyJump user1@jump_host" user2@remote_host
   <br>
   <img src="images/SSH_port_forward_jump.svg" width="550" title="SSH jump hosts"/>
     <p style="text-align: center">
-        Рисунок 21 &ndash; Jump-хосты
+        Рисунок 22 &ndash; Jump-хосты
     </p>
 </div>
 
@@ -1328,7 +1340,7 @@ ForwardAgent yes
   <br>
   <img src="images/SSH_port_forward_reverse.svg" width="490" title="SSH reverse tunnel"/>
     <p style="text-align: center">
-        Рисунок 22 &ndash; Обратное туннелирование SSH
+        Рисунок 23 &ndash; Обратное туннелирование SSH
     </p>
 </div>
 
@@ -1360,6 +1372,12 @@ Restart=always
 [Install]
 WantedBy = multi-user.target
 ```
+
+Параметры `autossh`:
+- `-M 0`: номер порта на сервере-релее, для которого будет осуществляться мониторинг. Данный порт будет использоваться для обмена тестовыми данными при контроле сессии SSH. Этот порт не должен на сервере-релее использоваться какой-либо другой программой.
+- `-q`: режим `quiet mode`, отключает вывод диагностических сообщений и предупреждений.
+- `-N`: отключает выполнение удаленной команды. Используется для проброса портов.
+- `-o`: указывает параметр, для которого не предусмотрен флаг в `ssh` утилите. Используется синтаксис как в конфигурационном файле демона `sshd`.
 
 Параметры сервера-релея:
 - Адрес: `relay-server.net`
@@ -1399,3 +1417,106 @@ ssh -p 10222 ruser@relay-server.net -i C:\Users\<имя юзера>\.ssh\id_ed25
 ```bash
 sudo systemctl enable rtunnel
 ```
+
+> В службу `rtunnel` можно прописать несколько пробросов удаленных портов: для каждого подключения с разных учетных записей на сервере (искомый, за NAT) необходимо пробросить отдельный удаленный порт. Другими словами, нельзя подключиться через один и тот же удаленный порт с разных учетных записей сервера за NAT.
+> <div align="center">
+>  <br>
+>  <img src="images/SSH_port_forward_reverse_multiple.svg" width="780" title="SSH reverse tunnel multiple"/>
+>    <p style="text-align: center">
+>        Рисунок 24 &ndash; Обратное туннелирование SSH, несколько туннелей
+>    </p>
+> </div>
+>
+> Публичные ключи `user1` и `user2` должны быть прописаны в `authorized_keys` на сервере `secret-server`, публичный ключ `ruser` должен быть прописан в `authorized_keys` на сервере `relay-server`.
+
+### 0.10 Файл конфигурации config
+
+Для организации множества подключений к различным хостам можно использовать конфигурационный файл `config`, который необходимо создать в папке `.ssh`. Файл конфигурации SSH клиента представляет собой текстовый файл, в котором перечисляются настройки для различных хостов.
+
+Пример содержимого:
+
+```nano
+Host *
+  ForwardAgent yes
+  ForwardX11 yes
+  ForwardX11Trusted yes
+Host gitlab.com
+  IdentityFile ~/.ssh/id_rsa_gitlab
+  User git
+  Port 22
+Host github.com
+  IdentityFile ~/.ssh/id_rsa_github
+  User git
+  Port 22
+Host Nano
+  HostName jnano
+  Port 2222
+  User ud
+  IdentityFile ~/.ssh/id_rsa_jnano
+Host udrpi3, 10.0.0.29
+  HostName udrpi3
+  User pi
+  IdentityFile ~/.ssh/id_rsa_udrpi3
+```
+
+Первый блок устанавливает параметры для всех подключений:
+- `ForwardAgent`: уже знакомый параметр проброса ключа через промежуточные хосты.
+- `ForwardX11`: проброс "иксов" &ndash; графического окружения для вывода графических приложений. Аналогично использованию ключа `-X`: `ssh -X your_user@your_server`.
+- `ForwardX11Trusted`: понижает уровень безопасности или, другими словами, повышает уровень доверия к клиенту &ndash; "trusted client". В "untrusted" варианте, если проброшенное приложение нарушает настройки безопасности (например, осуществляет захват экрана &ndash; скриншоты, логирование нажатий клавиш клавиатуры и т.п.), то выскочит ошибка. В доверенном варианте такие действия не отлавливаются. Аналогично использованию ключа `-Y`: `ssh -Y your_user@your_server`.
+
+> X11 forwarding &ndash; это механизм, позволяющий отображать на локальном клиентском компьютере графические интерфейсы X11 программ, запущенных на удаленном Unix/Linux сервере. SSH имеет возможность безопасного туннелирования X11 соединений, так что сеансы X11 forwarding-а шифруются и инкапсулируются.  
+> 
+> Обычно не рекомендуется всегда работать с «ForwardX11 yes». Поэтому, если вы хотите использовать свои SSH-соединения с повышенной безопасностью, лучше всего сделать следующее:
+> - Не прописывать «ForwardX11 yes» в `~/.ssh/config` файл.
+> - Использовать "ForwardingX11" только когда это необходимо, в явном виде `ssh -X your_user@your_server`.
+> Подробнее здесь: [What is the difference between `ssh -Y` (trusted X11 forwarding) and `ssh -X` (untrusted X11 forwarding)?](https://askubuntu.com/questions/35512/what-is-the-difference-between-ssh-y-trusted-x11-forwarding-and-ssh-x-u)/
+
+```nano
+Host gitlab.com
+  IdentityFile ~/.ssh/id_rsa_gitlab
+  User git
+  Port 22
+```
+
+Параметры:
+- `Host`: указывает, что далее идут настройки для определённого хоста или нескольких хостов (псевдоним аля метка).
+- `HostName`: реальное имя хоста.
+- `IdentityFile`: путь к приватному ключу.
+- `User`: имя учетной записи для подключения.
+- `Port`: номер SSH порта.
+
+Для примера выше можно проверить SSH подключение:
+
+```bash
+ssh -T gitlab.com
+```
+
+### 0.11 Разное
+
+#### Форматы ключей
+
+При попытке подключения в PuTTY или WinSCP с использованием ключей, сгенерированных через OpenSSH, выскочит следующее сообщение:
+
+<div align="center">
+  <br>
+  <img src="images/OpenSSH_PuTTY_ppk.png" width="482" title="SSH key convertion"/>
+    <p style="text-align: center">
+        Рисунок 25 &ndash; Конвертация ключа из формата OpenSSH в PPK
+    </p>
+</div>
+
+#### Конфиг демона `sshd`
+
+В конфиге помимо глобальных настроек можно указать настройки для отдельных учетных записей, переопределяющие глобальные. Для этого в синтаксисе конфига используется конструкция `Match`:
+
+```nano
+...
+AuthorizedKeysFile /home/ud/.ssh/authorized_keys
+...
+Match User ruser
+  AuthorizedKeysFile /home/ruser/.ssh/authorized_keys
+```
+
+`Match` означает условный блок, который переопределяет параметры при выполнении условия. Критерии, которые можно использовать в блоке `Match`: `User`, `Group`, `Host`, `LocalAddress`, `LocalPort`, `RDomain`, `Address`.
+
+Подробнее можно посмотреть в руководстве `man sshd_config` ([sshd_config(5) — Linux manual page](https://man7.org/linux/man-pages/man5/sshd_config.5.html)) и `man ssh_config` ([ssh_config(5) — Linux manual page](https://www.man7.org/linux/man-pages/man5/ssh_config.5.html)).
