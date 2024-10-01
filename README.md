@@ -1,7 +1,9 @@
 # Технологии искусственного интеллекта. Семестр 2
 
 ## Лекции
+
 0. [SSH](lectures/lecture_0/lecture_0.md)
+1. [Контейнеризация. Docker](lectures/lecture_1/lecture_1.md)
 
 ## Лабораторные работы
 TBD
