@@ -11,6 +11,7 @@
 3. [Работа с Docker](#13-работа-с-docker)
 4. [Хранение данных](#14-хранение-данных)
 5. [Создание образа с использованием Dockerfile](#15-создание-образа-с-использованием-dockerfile)
+6. [Пример](#16-пример)
 
 ### 1.1 Введение
 
@@ -337,7 +338,7 @@ docker command --help
  - декларативное описание через `Dockerfile`.  
    Основной способ создания образов. Необходимо создать файл `Dockerfile` с декларативным описанием в формате `yaml` через текстовый редактор и запустить сборку образа командой `build`.
 
-#### Пример c использованием `commit`
+#### Пример с использованием `commit`
 
 - Запуск контейнера из образа `ubuntu` в интерактивном режиме, установка утилиты `ping` и коммит образа под именем `ubuntu-ping:20.04`
   ```bash
@@ -381,3 +382,149 @@ docker push alex/ubuntu-ping:20.04
 ```
 
 Подробнее: [Изучаем Docker, часть 3: файлы Dockerfile](https://habr.com/ru/company/ruvds/blog/439980/)
+
+### 1.6 Пример
+
+Сборка OpenCV из исходников.
+
+Скрипт для установки переменных `build_env.sh`:
+
+```bash
+#!/bin/sh
+# Read in the file of environment settings
+
+export py3_ver_mm_wod=$(python3 -c "import sys; print(\"\".join(map(str, sys.version_info[:2])))")
+export py3_ver_mm=$(python3 -c "import sys; print(\".\".join(map(str, sys.version_info[:2])))")
+export py3_ver_mmm=$(python3 -c "import sys; print(\".\".join(map(str, sys.version_info[:3])))")
+echo "Environment vars for OpenCV build: ${py3_ver_mm_wod} ${py3_ver_mm} ${py3_ver_mmm}"
+
+# Then run the CMD
+# exec "$@"
+```
+
+Добавим права на выполнение:
+
+```bash
+chmod +x build_env.sh
+```
+
+Докер-файл `OpenCVDockerFile`:
+
+```dockerfile
+FROM ubuntu:20.04
+WORKDIR /
+# Update and upgrade
+RUN apt update && apt -y upgrade
+
+# Create dir
+
+RUN mkdir /usr/local/Dev
+
+# Python 3
+RUN apt install -y curl python3-testresources python3-dev wget gnupg2 software-properties-common
+WORKDIR /usr/local/Dev/
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+RUN python3 get-pip.py
+
+# OpenCV x.x.x with non free modules
+
+RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections
+
+## GStreamer
+
+RUN apt -y install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-doc gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
+RUN apt -y install ubuntu-restricted-extras libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev libgstreamer-plugins-bad1.0-0 libgstreamer-plugins-base1.0-0 libgstreamer-plugins-base1.0-dev
+
+## OpenCV build dependencies
+
+RUN apt -y install build-essential
+RUN apt -y install cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev
+RUN apt -y install python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libdc1394-22-dev
+RUN apt -y install python3-pip python3-numpy
+
+## OpenCV
+
+RUN apt -y install build-essential cmake unzip pkg-config
+RUN apt -y install libjpeg-dev libpng-dev libtiff-dev
+RUN apt -y install libavcodec-dev libavformat-dev libswscale-dev libv4l-dev
+RUN apt -y install libxvidcore-dev libx264-dev
+RUN apt -y install libgtk-3-dev
+RUN apt -y install libatlas-base-dev gfortran
+RUN apt -y install python3-dev
+
+ARG ocv_ver
+
+RUN wget -O opencv.zip https://github.com/opencv/opencv/archive/${ocv_ver}.zip
+RUN wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/${ocv_ver}.zip
+RUN unzip opencv.zip
+RUN unzip opencv_contrib.zip
+
+COPY build_env.sh /usr/local/Dev
+RUN chmod +x /usr/local/Dev/build_env.sh
+RUN cd /usr/local/Dev/ && ./build_env.sh
+
+WORKDIR /usr/local/Dev/opencv-${ocv_ver}
+RUN mkdir build
+WORKDIR /usr/local/Dev/opencv-${ocv_ver}/build
+
+### Update numpy
+
+RUN pip3 install -U numpy
+
+RUN . /usr/local/Dev/build_env.sh && cmake -D CMAKE_BUILD_TYPE=RELEASE \
+-D CMAKE_INSTALL_PREFIX=/usr/local/OpenCV-${ocv_ver} \
+-D OPENCV_SKIP_PYTHON_LOADER=OFF \
+-D OPENCV_PYTHON3_INSTALL_PATH=/usr/local/OpenCV-${ocv_ver}/lib/python${py3_ver_mm}/site-packages \
+-D OPENCV_PYTHON3_VERSION=${py3_ver_mmm} \
+-D BUILD_opencv_python2=OFF \
+-D BUILD_opencv_python3=ON \
+-D BUILD_opencv_python_bindings_generator=ON \
+-D PYTHON_DEFAULT_EXECUTABLE=$(which python3) \
+-D PYTHON3_EXECUTABLE=$(which python3) \
+-D PYTHON3_INCLUDE_DIR=$(python3 -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())") \
+-D PYTHON3_PACKAGES_PATH=$(python3 -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())") \
+-D PYTHON3_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython${py3_ver_mmm}.so \
+-D PYTHON3_NUMPY_INCLUDE_DIRS=$(python3 -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/numpy/core/include \
+-D WITH_OPENCL=ON \
+-D WITH_OPENMP=ON \
+-D WITH_CUDA=OFF \
+-D WITH_CUDNN=OFF \
+-D WITH_NVCUVID=OFF \
+-D WITH_CUBLAS=OFF \
+-D WITH_GSTREAMER=ON \
+-D ENABLE_FAST_MATH=1 \
+-D CUDA_FAST_MATH=0 \
+-D BUILD_opencv_cudacodec=OFF \
+-D INSTALL_PYTHON_EXAMPLES=ON \
+-D INSTALL_C_EXAMPLES=ON \
+-D OPENCV_ENABLE_NONFREE=ON \
+-D OPENCV_EXTRA_MODULES_PATH=/usr/local/Dev/opencv_contrib-${ocv_ver}/modules \
+-D BUILD_EXAMPLES=ON ..
+
+RUN make -j${build_thread_count}
+RUN make install
+RUN ldconfig
+
+RUN . /usr/local/Dev/build_env.sh && ln -sf /usr/local/OpenCV-${ocv_ver}/lib/python$py3_ver_mm/site-packages/cv2/python-${py3_ver_mm}/$(ls /usr/local/OpenCV-${ocv_ver}/lib/python$py3_ver_mm/site-packages/cv2/python-${py3_ver_mm}/) /usr/local/lib/python${py3_ver_mm}/dist-packages/cv2.so
+
+RUN echo $(python3 -c "import cv2 as cv; print(cv.__version__)")
+
+CMD [ "bash" ]
+```
+
+Скрипт для сборки `build_ocv_ubuntu_20.04.sh` (`chmod +x`):
+
+```bash
+echo Setting env vars
+
+export ocv_ver=4.5.0
+
+echo Building docker
+docker build --tag ocv_ubuntu_20.04 --build-arg ocv_ver=$ocv_ver --build-arg build_thread_count=8 -f OpenCVDockerFile .
+```
+
+Запускаем процесс сборки:
+
+```bash
+./build_ocv_ubuntu_20.04.sh
+```
