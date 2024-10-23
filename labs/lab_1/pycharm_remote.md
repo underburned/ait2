@@ -106,7 +106,7 @@
   </p>
 </div>
 
-Однако, можно открыть терминал и на удаленной машине. Для этого в меню `Tools` &rarr; `Start SSH Session...` необходимо выбрать новую сессию вида `user@server:port`:  
+Однако, можно открыть терминал и удаленной машины. Для этого в меню `Tools` &rarr; `Start SSH Session...` необходимо выбрать новую сессию вида `user@server:port`:  
 
 <div align="center">
   <img src="data/images/pycharm_remote_13.png" width="1280" title="PyCharm Pro: start SSH session"/>
