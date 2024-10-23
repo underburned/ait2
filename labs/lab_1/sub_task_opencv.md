@@ -12,9 +12,12 @@
      S(x) = \frac{1}{1 + e^{-k \cdot x}} \\
      I_{out} = (\frac{I_{in}}{255} \cdot S(x)) \cdot 255}
      ```  
-     <p align="center">
-       <img width=600 height=400 src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Logistic-curve.svg/600px-Logistic-curve.svg.png">
-     </p>
+     <div align="center">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Logistic-curve.svg/600px-Logistic-curve.svg.png" width="600" title="S-curve"/>
+        <p style="text-align: center">
+          Рисунок 1 &ndash; <i>S-curve</i>
+        </p>
+      </div>
    - контрастирование
    ```math
    I_{out} = \alpha \cdot I_{in} + \beta

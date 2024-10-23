@@ -12,7 +12,7 @@
 
 Настроить IDE для удобной работы на удаленной машине:
 - [VS Code]()
-- [PyCharm Pro]()
+- [PyCharm Pro](pycharm_remote.md)
 
 ## Задание 1
 
