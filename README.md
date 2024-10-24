@@ -14,3 +14,9 @@
 1. Желательно прокомментировать блоки кода, выполняющие ту или иную функцию.
 
 2. Онлайн-демонстрация :grinning:
+
+## Misc
+
+### Настройка remote development
+- [VS Code](labs/lab_1/vscode_remote.md)
+- [PyCharm Pro](labs/lab_1/pycharm_remote.md)
