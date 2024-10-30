@@ -348,4 +348,368 @@ def load_settings(self):
 
 ### 2.4 Файл Docker Compose
 
-Спецификации файла Docker Compose описаны в разделе [Compose file reference](https://docs.docker.com/reference/compose-file/).
+Спецификации файла Docker Compose описаны в разделе [Compose file reference](https://docs.docker.com/reference/compose-file/). Минимальный воспроизводимый туториал по Docker Compose для понимания процесса описан в [Docker Compose Quickstart](https://docs.docker.com/compose/gettingstarted/). Параметров в конфиге много, поэтому рассмотрим рабочий пример.
+
+Пример [конфига](data/hsi_storage_compose.yml):
+
+```yaml
+version: "3"
+services:
+  minio_server:
+    container_name: hsis_minio
+    image: quay.io/minio/minio
+    environment:
+      MINIO_ROOT_USER: $MINIO_ADMIN_USER
+      MINIO_ROOT_PASSWORD: $MINIO_ADMIN_PASSWORD
+      MINIO_DEFAULT_BUCKETS: $MINIO_BUCKET_NAME
+    volumes:
+      - $MINIO_REMOTE_VOL:$MINIO_LOCAL_VOL
+    command: server $MINIO_LOCAL_VOL --console-address :$MINIO_SRV_CONSOLE_LOCAL_PORT
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_MINIO_IP
+    ports:
+      - $MINIO_SRV_CONSOLE_REMOTE_PORT:$MINIO_SRV_CONSOLE_LOCAL_PORT
+      - $MINIO_SRV_API_REMOTE_PORT:$MINIO_SRV_API_LOCAL_PORT
+  db:
+    container_name: hsis_db
+    image: postgres:15-bullseye
+    environment:
+      PGDATA: $PG_DATA
+      POSTGRES_PASSWORD: $PG_PASSWORD
+      POSTGRES_DB: $PG_DB_NAME
+    volumes:
+      - $PG_REMOTE_VOL:$PG_LOCAL_VOL
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_DB_IP
+    ports:
+      - $PG_REMOTE_PORT:$PG_LOCAL_PORT
+    depends_on:
+      - minio_server
+  pgadmin:
+    container_name: hsis_db_web
+    image: dpage/pgadmin4:7.7
+    environment:
+      PGADMIN_DEFAULT_EMAIL: $PGA_EMAIL
+      PGADMIN_DEFAULT_PASSWORD: $PGA_PASSWORD
+    volumes:
+      - $PGA_REMOTE_VOL:$PGA_LOCAL_VOL
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_DB_WEB_IP
+    ports:
+      - $PGA_WEB_REMOTE_PORT:$PGA_WEB_LOCAL_PORT
+    depends_on:
+      - minio_server
+      - db
+  web:
+    container_name: hsis_web
+    build:
+      context: ..
+      dockerfile: docker/hsi_storage_web.dockerfile
+    devices:
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-caps:/dev/nvidia-caps
+      - /dev/nvidia-modeset:/dev/nvidia-modeset
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+      - /dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    environment:
+      MODULE_NAME: hsis_server.__init__
+#      VARIABLE_NAME: create_app()
+      VARIABLE_NAME: app
+#      LOG_LEVEL: "debug"
+#      WORKERS_PER_CORE: 0.5
+      TIMEOUT: 1200
+      GRACEFUL_TIMEOUT: 1200
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_WEB_IP
+    ports:
+      - $DB_WEB_REMOTE_PORT:$DB_WEB_LOCAL_PORT
+    depends_on:
+      - minio_server
+      - db
+networks:
+  hsis_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: $DOCKER_NETWORK
+```
+
+Рассмотрим по отдельности различные блоки данного конфига. Согласно *Compose file reference* [в самом начале конфига](https://docs.docker.com/reference/compose-file/version-and-name/) идет название проекта (опционально) и раздел сервисы:
+
+```yaml
+version: "3"
+services:
+  minio_server:
+# ...
+```
+
+Параметр `version` используется для обратной совместимости, носит чисто информативный характер:
+
+> Legacy versions 2.x and 3.x of the Compose file format were merged into the Compose Specification. It is implemented in versions 1.27.0 and above (also known as Compose V2) of the Docker Compose CLI.
+
+Далее объявляется раздел сервисов `services`. 1 сервис == 1 контейнер. Сервисом может быть клиент, сервер, сервер баз данных и т.п. В нашем случае имеется 4 сервиса:
+- `minio_server` &ndash; сервер объектного хранилища [MinIO](https://min.io/)
+- `db` &ndash; БД [PostgreSQL](https://www.postgresql.org/)
+- `pgadmin` &ndash; [pgAdmin]() &ndash; платформа для администрирования и настройки СУБД PostgreSQL
+- `web` &ndash; веб-сайт, реализация на Python с использованием [FastAPI](https://fastapi.tiangolo.com/), [Jinja2](https://jinja.palletsprojects.com/en/stable/), [Bootstrap](https://getbootstrap.com/) и немного JS.
+
+Рассмотрим сервисы и задаваемые атрибуты по порядку. Полный список различных атрибутов приведен в [Services top-level elements](https://docs.docker.com/reference/compose-file/services/). `minio_server`:
+
+```yaml
+services:
+  minio_server:
+    container_name: hsis_minio
+    image: quay.io/minio/minio
+    environment:
+      MINIO_ROOT_USER: $MINIO_ADMIN_USER
+      MINIO_ROOT_PASSWORD: $MINIO_ADMIN_PASSWORD
+      MINIO_DEFAULT_BUCKETS: $MINIO_BUCKET_NAME
+    volumes:
+      - $MINIO_REMOTE_VOL:$MINIO_LOCAL_VOL
+    command: server $MINIO_LOCAL_VOL --console-address :$MINIO_SRV_CONSOLE_LOCAL_PORT
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_MINIO_IP
+    ports:
+      - $MINIO_SRV_CONSOLE_REMOTE_PORT:$MINIO_SRV_CONSOLE_LOCAL_PORT
+      - $MINIO_SRV_API_REMOTE_PORT:$MINIO_SRV_API_LOCAL_PORT
+# ...
+```
+
+Здесь:
+- `container_name` &ndash; имя контейнера. Аналогично тегу при создании контейнера без compose.
+- `image` &ndash; имя образа. Аналогично командке `FROM` из докер-файла. Используется образ из репозитория [Quay.io](https://quay.io/).
+- `environment` &ndash; раздел с переменными среды (environment vars), которые используются в образе или докер-файле.
+   > Здесь `$MINIO_ADMIN_USER` &ndash; и т.п. переменные устанавливаются извне в соответствующем bash-скрипте перед сборкой приложения (будет рассмотрено далее).
+- `volumes` &ndash; раздел, в котором построчно указывается проброс необходимых директорий с хоста в контейнер.
+- `command` &ndash; [command](https://docs.docker.com/reference/compose-file/services/#command) переопределяет команду после старта контейнера, которая задана в образе или в команде `CMD` докер-файла.
+- `networks` &ndash; в данном разделе перечисляются сети, к которым подключается данный контейнер. `hsis_net` &ndash; название сети (раздел `networks` после раздела сервисов). Здесь в сети `hsis_net` атрибут `ipv4_address` задает статический IP-адрес контейнеру.
+  - `ports` &ndash; в данном разделе пробрасываются порты между хостом и контейнером в виде `порт хоста` &rlarr; `порт внутри контейнера`. Проброс портов нужен, чтобы с хоста осуществить подключение к сервису ***внутри контейнера*** (по аналогии с пробросом портов в лекции про SSH).
+
+Следующий сервис `db`:
+
+```yaml
+# ...
+  db:
+    container_name: hsis_db
+    image: postgres:15-bullseye
+    environment:
+      PGDATA: $PG_DATA
+      POSTGRES_PASSWORD: $PG_PASSWORD
+      POSTGRES_DB: $PG_DB_NAME
+    volumes:
+      - $PG_REMOTE_VOL:$PG_LOCAL_VOL
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_DB_IP
+    ports:
+      - $PG_REMOTE_PORT:$PG_LOCAL_PORT
+    depends_on:
+      - minio_server
+# ...
+```
+
+Появился новый атрибут `depends_on`. [depends_on](https://docs.docker.com/reference/compose-file/services/#depends_on) задает порядок запуска и завершения сервисов. В данном случае `db` зависит от `minio_server`, поэтому при старте приложения сначала будет запущен сервис `minio_server`, и только затем сервис `db`. При завершении работы приложения, наоборот, сначала завершится сервис `db`, затем `minio_server`. Данный атрибут позволяет упорядочить запуск и завершение взаимосвязанных сервисов. Например, запускать контейнер с сайтом не имеет смысла без запущенного и работающего контейнера с БД.
+
+В `pgadmin` новые атрибуты не встречаются. Рассмотрим `web`:
+
+```yaml
+# ...
+  web:
+    container_name: hsis_web
+    build:
+      context: ..
+      dockerfile: docker/hsi_storage_web.dockerfile
+    devices:
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-caps:/dev/nvidia-caps
+      - /dev/nvidia-modeset:/dev/nvidia-modeset
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+      - /dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    environment:
+      MODULE_NAME: hsis_server.__init__
+#      VARIABLE_NAME: create_app()
+      VARIABLE_NAME: app
+#      LOG_LEVEL: "debug"
+#      WORKERS_PER_CORE: 0.5
+      TIMEOUT: 1200
+      GRACEFUL_TIMEOUT: 1200
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_WEB_IP
+    ports:
+      - $DB_WEB_REMOTE_PORT:$DB_WEB_LOCAL_PORT
+    depends_on:
+      - minio_server
+      - db
+# ...
+```
+
+Здесь пропал атрибут `image` и появился `build`. [build](https://docs.docker.com/reference/compose-file/services/#build) указывает, что контейнер будет собран из исходников согласно [Compose Build Specification](https://docs.docker.com/reference/compose-file/build/). В атрибут `build` можно записать как однострочное значение (абсолютный или относительный путь к контексту сборки), так и перечень атрибутов для сборки.  
+
+> Рекомендуется использовать относительные пути для "переносимости" конфига. Корневой директорией в данном случае считается каталог, в котором лежит файл Docker Compose. При использовании абсолютного пути выскочит предупреждение.
+
+В нашем случае в `build` указаны:
+- `context` &ndash; [context](https://docs.docker.com/reference/compose-file/build/#context) &ndash; путь к директории, содержащей докер-файл, или URL git репозитория.
+- `dockerfile` &ndash; путь до докер-файла относительно директории, указанной в `context`.
+
+Атрибут `devices` [прокидывает](https://docs.docker.com/reference/compose-file/services/#devices) устройства хоста в контейнер в виде `HOST_PATH:CONTAINER_PATH[:CGROUP_PERMISSIONS]`. В нашем случае указанные устройства связаны с использованием GPU для работы нейросети.  
+
+Атрибут `deploy` задает [параметры развертывания и жизненного цикла сервиса](https://docs.docker.com/reference/compose-file/services/#deploy) согласно спецификации [Compose Deploy Specification](https://docs.docker.com/reference/compose-file/deploy/). Атрибут `resources` [накладывает ограничения на физические ресурсы](https://docs.docker.com/reference/compose-file/deploy/#resources), используемые сервисом. Ограничения могут быть двух типов:
+- `limits` &ndash; ограничения сверху, установка максимального лимита по ресурсам хоста для контейнера.
+- `reservations` &ndash; ограничение снизу, установка минимального лимита выделяемых контейнеру ресурсов хоста.
+
+Полный перечень можно посмотреть в спецификации. В нашем случае необходимо выделить хотя бы 1 GPU NVidia.  
+
+Сервис `web` зависит уже от двух других сервисов: `minio_server` и `db`.
+
+Содержимое `hsi_storage_web.dockerfile`:
+
+```dockerfile
+#FROM tiangolo/meinheld-gunicorn-flask:python3.9
+#FROM tecktron/python-waitress:latest
+#FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-devel
+#FROM tiangolo/uvicorn-gunicorn-fastapi:python3.10
+# Update and upgrade
+RUN apt update && apt -y upgrade
+RUN apt install -y wget git python3-dev curl
+WORKDIR /downloads
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3 get-pip.py
+RUN python3 -m pip install --upgrade pip
+RUN git clone https://github.com/tiangolo/uvicorn-gunicorn-docker.git
+RUN git clone https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker.git
+WORKDIR /downloads/uvicorn-gunicorn-docker/docker-images
+RUN cp -r ./app /
+RUN pip3 install --no-cache-dir -r requirements.txt
+RUN cp ./start.sh /
+RUN cp ./gunicorn_conf.py /
+RUN cp ./start-reload.sh /
+WORKDIR /app/
+ENV PYTHONPATH=/app
+EXPOSE 80
+# Run the start script, it will check for an /app/prestart.sh script (e.g. for migrations)
+# And then will start Gunicorn with Uvicorn
+#CMD ["/start.sh"]
+
+WORKDIR /
+RUN echo $(ls -alh)
+RUN chmod +x /start.sh
+RUN chmod +x /start-reload.sh
+WORKDIR /downloads/uvicorn-gunicorn-fastapi-docker/docker-images
+RUN pip3 install --no-cache-dir -r requirements.txt
+RUN cp -r ./app /
+
+ENV APP_DIR /hsis_server
+WORKDIR /
+
+RUN apt install -y libpq-dev
+RUN mkdir -p $APP_DIR
+COPY hsis_server/requirements.txt $APP_DIR
+RUN python3 -m pip install --upgrade pip
+RUN pip install --no-cache-dir --upgrade -r /hsis_server/requirements.txt
+RUN pip install --no-cache-dir fastapi
+COPY docker/hsis.env $APP_DIR
+COPY docker/hsis_secrets.env $APP_DIR
+COPY hsis_server $APP_DIR
+COPY docker/cert cert
+#ENV DEBIAN_FRONTEND=noninteractive
+#RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+#RUN apt install -y cuda-drivers-545
+#CMD ["nvidia-smi"]
+#CMD ["python3"]
+CMD ["/start.sh"]
+```
+
+Из докер-файла можно увидеть, что использовались разные образы:
+- В `nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04` вручную устанавливался пайторч, но почему-то не взлетело, так что пришлось использовать готовый образ `pytorch/pytorch:2.1.0-cuda11.8-cudnn8-devel`.
+- В качестве веб-сервера на Python использовались готовые образы от `tiangolo`. Сначала Flask + Gunicorn, затем миграция на FastAPI + Uvicorn + Gunicorn. В итоге проще оказалось собрать свой образ. Для этого понадобилось расковырять, как собирается необходимый образ от `tiangolo` (реп на гитхабе). И добавить свои команды по установке необходимых библиотек и ресурсов для сайта.  
+
+> Спецификация докер-файла допускает использование нескольких команд `FROM`: [Multi-stage builds](https://docs.docker.com/build/building/multi-stage/).
+
+Остался последний раздел верхнего уровня `networks`:
+
+```yaml
+# ...
+networks:
+  hsis_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: $DOCKER_NETWORK
+```
+
+[networks](https://docs.docker.com/reference/compose-file/networks/) задает сети для сервисов. В нашем случае:
+- `hsis_net` &ndash; название сети.
+- `ipam` &ndash; [задает](https://docs.docker.com/reference/compose-file/networks/#ipam) настройки IPAM.
+   > IPAM &ndash; *IP address management* &ndash; средство планирования, отслеживания и управления адресным пространством интернет-протокола, используемым в сети (администрирование DNS и DHCP).
+- `driver` &ndash; сетевой драйвер. В нашем случае `default`, т.е. `bridge`.
+- `config` &ndash; список с $0+$ [элементов](https://docs.docker.com/reference/compose-file/networks/#ipam). В нашем случае используется только `subnet` для задания подсети.
+
+#### Secrets
+
+Для развертывания приложений и сервисов, как правило, используются конфиденциальные данные (пароли, токены, сертификаты и т.п.). Использование для этих целей переменных среды может привести к нежелательным эффектам (попадание в открытом виде в логи при отладке и т.п.). Для этого можно воспользоваться атрибутом `secrets`. Подробнее в [How to use secrets in Docker Compose](https://docs.docker.com/compose/how-tos/use-secrets/).  
+
+В текущем варианте реализации открытые параметры записаны в файл `hsis.env`, конфиденциальные &ndash; `hsis_secrets.env`. Используется синтаксис как в bash-скриптах.
+
+> В самом коде в бэкенде используется библиотека [python-dotenv](https://pypi.org/project/python-dotenv/) для загрузки параметров в конфиг приложения из .env файлов.
+
+#### Сборка и запуск
+
+Скрипт для сборки:
+
+```bash
+#!/bin/sh
+cp hsis.env .env
+echo >> .env
+cat hsis_secrets.env >> .env
+echo Create dirs
+export $(grep -v '^#' hsis.env | xargs)
+mkdir -p -v $MINIO_REMOTE_VOL
+mkdir -p -v $PGA_REMOTE_VOL
+sudo chown -R 5050:5050 $PGA_REMOTE_VOL
+echo Building docker
+docker compose -f hsi_storage_compose.yml build
+```
+
+Сначала устанавливаются переменные среды, создаются необходимые директории. Сборка осуществляется с использованием команды:
+
+```bash
+docker compose -f hsi_storage_compose.yml build
+```
+
+Запуск осуществляется с использованием команды [docker compose up](https://docs.docker.com/reference/cli/docker/compose/up/):
+
+```bash
+docker compose -f hsi_storage_compose.yml up
+```
+
+Данная команда используется для:
+- сборки образа
+- создания/пересоздания контейнеров
+- запуска контейнеров
+- присоединения к запущенным контейнерам
+
+Если прервать команду после запуска приложения или присоединения, то осуществится остановка контейнеров. Для запуска в фоне используется флаг `--detach`. Если конфигурация в файле Docker Compose изменилась, то при выполнении `docker compose up` осуществится сборка образов перед их запуском.
+
+> Изменения в докер-файлах не являются изменениями конфигурации. То есть необходимо вручную осуществить сборку перед запуском, или указать флаг `--build` для принудительной сборки образов перед запуском приложения.

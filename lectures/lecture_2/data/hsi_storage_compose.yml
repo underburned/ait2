@@ -1,0 +1,91 @@
+version: "3"
+services:
+  minio_server:
+    container_name: hsis_minio
+    image: quay.io/minio/minio
+    environment:
+      MINIO_ROOT_USER: $MINIO_ADMIN_USER
+      MINIO_ROOT_PASSWORD: $MINIO_ADMIN_PASSWORD
+      MINIO_DEFAULT_BUCKETS: $MINIO_BUCKET_NAME
+    volumes:
+      - $MINIO_REMOTE_VOL:$MINIO_LOCAL_VOL
+    command: server $MINIO_LOCAL_VOL --console-address :$MINIO_SRV_CONSOLE_LOCAL_PORT
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_MINIO_IP
+    ports:
+      - $MINIO_SRV_CONSOLE_REMOTE_PORT:$MINIO_SRV_CONSOLE_LOCAL_PORT
+      - $MINIO_SRV_API_REMOTE_PORT:$MINIO_SRV_API_LOCAL_PORT
+  db:
+    container_name: hsis_db
+    image: postgres:15-bullseye
+    environment:
+      PGDATA: $PG_DATA
+      POSTGRES_PASSWORD: $PG_PASSWORD
+      POSTGRES_DB: $PG_DB_NAME
+    volumes:
+      - $PG_REMOTE_VOL:$PG_LOCAL_VOL
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_DB_IP
+    ports:
+      - $PG_REMOTE_PORT:$PG_LOCAL_PORT
+    depends_on:
+      - minio_server
+  pgadmin:
+    container_name: hsis_db_web
+    image: dpage/pgadmin4:7.7
+    environment:
+      PGADMIN_DEFAULT_EMAIL: $PGA_EMAIL
+      PGADMIN_DEFAULT_PASSWORD: $PGA_PASSWORD
+    volumes:
+      - $PGA_REMOTE_VOL:$PGA_LOCAL_VOL
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_DB_WEB_IP
+    ports:
+      - $PGA_WEB_REMOTE_PORT:$PGA_WEB_LOCAL_PORT
+    depends_on:
+      - minio_server
+      - db
+  web:
+    container_name: hsis_web
+    build:
+      context: ..
+      dockerfile: docker/hsi_storage_web.dockerfile
+    devices:
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-caps:/dev/nvidia-caps
+      - /dev/nvidia-modeset:/dev/nvidia-modeset
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+      - /dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    environment:
+      MODULE_NAME: hsis_server.__init__
+#      VARIABLE_NAME: create_app()
+      VARIABLE_NAME: app
+#      LOG_LEVEL: "debug"
+#      WORKERS_PER_CORE: 0.5
+      TIMEOUT: 1200
+      GRACEFUL_TIMEOUT: 1200
+    networks:
+      hsis_net:
+        ipv4_address: $DOCKER_WEB_IP
+    ports:
+      - $DB_WEB_REMOTE_PORT:$DB_WEB_LOCAL_PORT
+    depends_on:
+      - minio_server
+      - db
+networks:
+  hsis_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: $DOCKER_NETWORK
