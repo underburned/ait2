@@ -4,6 +4,7 @@
 
 0. [SSH](lectures/lecture_0/lecture_0.md)
 1. [Контейнеризация. Docker](lectures/lecture_1/lecture_1.md)
+2. [Мультиконтейнерные приложения. Docker Compose](lectures/lecture_2/lecture_2.md)
 
 ## Лабораторные работы
 
