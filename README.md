@@ -9,6 +9,7 @@
 ## Лабораторные работы
 
 1. [Docker. Сборка OpenCV](labs/lab_1/lab_1.md)
+2. [Docker Compose](labs/lab_2/lab_2.md)
 
 ### Требования к оформлению лабораторных работ
 
