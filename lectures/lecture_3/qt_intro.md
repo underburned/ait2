@@ -139,7 +139,6 @@ Qt представляет собой мощный фреймворк или п
 UI файл можно сохранить. Структурно он представляет собой XML файл. MOC при запуске скомпилирует его в промежуточный файл. В плюсах, например, это будет отдельный заголовочный файл со своим namespace, который необходимо будет включить в основной .h/.cpp и юзать его через промежуточный объект, который будет содержать проинициализированные объекты виджетов в качестве членов класса, например:
 
 ```cpp
-...
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -147,14 +146,14 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     ui->slit_graphicsView->installEventFilter(this);
     ui->slit_graphicsView->setScene(&_slitGraphicsScene);
-    ...
+}
 ```
 
 В Питоне можно тоже скомпилировать UI в .py файл. Оба примера это "статический способ", что не очень удобно при рефакторинге имен, например, да и нужен предварительный этап компиляции перед запуском. В пакете PyQt есть отдельный модуль `uic`, который может загрузить UI файл и вернуть инстанс с инициализированными виджетами.
 
 ### Hello Qt GUI world
 
-Создадим `hello.py` &ndash; точка входа нашего GUI приложения. Минималистично код выглядит так:
+Создадим `hello.py` &ndash; скрипт с точкой входа нашего GUI приложения. Минималистично код выглядит так:
 
 ```python
 
@@ -212,7 +211,6 @@ uic.loadUi('mainwindow.ui', self)
 Что там про боль рефакторинга? Мы можем инициализировать свои переменные-виджеты с использованием метода `findChild`:
 
 ```python
-    ...
     uic.loadUi('mainwindow.ui', self)
     self.ui_image_input_path_line_edit: QLineEdit = self.findChild(QLineEdit, "imageInputPath_lineEdit")
     self.ui_image_input_path_open_button: QPushButton = self.findChild(QPushButton, "imageInputPathOpen_pushButton")
