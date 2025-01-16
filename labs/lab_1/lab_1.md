@@ -65,3 +65,40 @@
 ## Примечание
 
 Самостоятельная сборка `OpenCV` из исходников необходима для использования проприетарных "небесплатных" алгоритмов, лицензия которых не совместима с `Apache-2.0 license` основных модулей. Код дополнительных экспериментальных модулей расположен в отдельном репе [Repository for OpenCV's extra modules](https://github.com/opencv/opencv_contrib), в который включены и non-free модули. Например, патент на алгоритм [SIFT](https://docs.opencv.org/4.x/da/df5/tutorial_py_sift_intro.html) истек в 2020 году, и теперь данный алгоритм переехал в основные модули. А патент на [SURF](https://en.wikipedia.org/wiki/Speeded_up_robust_features) действителен, и для коммерческого использования его необходимо [лицензировать](https://github.com/herbertbay/SURF#License-1-ov-file).
+
+## Troubleshooting
+
+### Отключение интерактивного выбора страны/раскладки клавиатуры
+
+Согласно [docker build with Ubuntu 18.04 image hangs after prompting for Country of origin for keyboard](https://stackoverflow.com/questions/63476497/docker-build-with-ubuntu-18-04-image-hangs-after-prompting-for-country-of-origin) в докер-файле можно указать переменную среды и выполнить еще и системную команду для контрольного:
+
+```dockerfile
+ENV DEBIAN_FRONTEND=noninteractive
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+```
+
+### Ошибки с доступностью apt пакетов
+
+[Инструкция по добавлению зеркал репов](apt_mirrors.md).
+
+#### Отсутствие некоторых пакетов
+
+> Package 'gstreamer1.0-doc' has no installation candidate
+
+В Ubuntu 22.04 данный пакет не обнаружен. Можно воспользоваться сервисом [Launchpad](https://launchpad.net/ubuntu) для поиска пакетов. [Да, такого пакета в Jammy нет](https://launchpad.net/ubuntu/jammy/+search?text=gstreamer1.0-doc).
+
+Полный список "утраченных" пакетов:
+- gstreamer1.0-doc
+- python-dev
+- libdc1394-22-dev
+- python-numpy
+
+### Отладка при сборке образа
+
+Если нужно вывести результат выполнения команды (`ls`, `echo`, `cat` и т.п.) или содержимое файла, то при сборке образа нужно указать один или два флага:
+```bash
+--progress=plain --no-cache
+```
+
+Первый отключает красивый вывод лога и выводит весь лог построчно как в старые добрые времена.  
+Второй отключает кэширование, то есть ***пересобираться образ будет с 0***! Второй флаг нужен, если необходимо вывести результат команды, а слой образа уже закэширован (другими словами, из кэшированного слоя команда вывода в лог докера второй раз не сработает).
