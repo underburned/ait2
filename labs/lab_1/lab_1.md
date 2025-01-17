@@ -68,20 +68,42 @@
 
 ## Troubleshooting
 
+[OpenCVDockerFile.dockerfile](data/OpenCVDockerFile.dockerfile) содержит инструкции для сборки образа для Ubuntu 20.04. При сборке под Ubuntu 22.04 возникают ошибки, описанные в данном разделе.
+
+### Предупреждение об отсутствии значения по умолчанию для параметра `ubuntu_ver`
+
+Так как данный параметр используется в команде `FROM`:
+
+```dockerfile
+ARG ubuntu_ver=22.04
+FROM ubuntu:$ubuntu_ver
+```
+
+то при его отсутствии (`docker build ... --build-arg ubuntu_ver=$ubuntu_ver ...`) как минимум непонятно, какой образ тянуть из репа (скорее всего `latest`). Ну и пострадают зависящие от него команды. Так что имеет смысл добавить значение по умолчанию:
+
+```dockerfile
+ARG ubuntu_ver=22.04
+FROM ubuntu:$ubuntu_ver
+```
+
 ### Отключение интерактивного выбора страны/раскладки клавиатуры
 
-Согласно [docker build with Ubuntu 18.04 image hangs after prompting for Country of origin for keyboard](https://stackoverflow.com/questions/63476497/docker-build-with-ubuntu-18-04-image-hangs-after-prompting-for-country-of-origin) в докер-файле можно указать переменную среды и выполнить еще и системную команду для контрольного:
+Согласно [docker build with Ubuntu 18.04 image hangs after prompting for Country of origin for keyboard](https://stackoverflow.com/questions/63476497/docker-build-with-ubuntu-18-04-image-hangs-after-prompting-for-country-of-origin) в докер-файле можно указать переменную среды и выполнить еще и системную команду для контрольного выстрела:
 
 ```dockerfile
 ENV DEBIAN_FRONTEND=noninteractive
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 ```
 
+> Такие переменные и команды могут отличаться от релиза к релизу внутри одного семейства дистрибутивов.
+
 ### Ошибки с доступностью apt пакетов
 
-[Инструкция по добавлению зеркал репов](apt_mirrors.md).
+Общая инструкция для добавления зеркалов репов и более подробный разбор, как добавить зеркало репа Nvidia для установки драйверов, CUDA и прочего: [инструкция по добавлению зеркал репов](apt_mirrors.md).
 
-#### Отсутствие некоторых пакетов
+### Отсутствие некоторых пакетов
+
+Структура зависимостей различных пакетов может измениться при переходе от одной мажорной версии дистрибутива к другой, в результате чего "старая" инструкция по установке зависимостей потребует обновления. Например, в 22 версии Убунты отсутствуют некоторые пакеты, которые были доступны в 20 версии:
 
 > Package 'gstreamer1.0-doc' has no installation candidate
 
@@ -93,7 +115,103 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 - libdc1394-22-dev
 - python-numpy
 
+### Python библиотеки
+
+#### Специфика Ubuntu 24.04
+
+В Ubuntu 24.04 при выполнении инструкции из докер-файла (установка системного `pip3`):
+
+```dockerfile
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3 get-pip.py
+```
+
+Выскочит ошибка:
+
+```bash
+ud@uduwpc:~/Dev$ python3 get-pip.py 
+error: externally-managed-environment
+
+× This environment is externally managed
+╰─> To install Python packages system-wide, try apt install
+    python3-xyz, where xyz is the package you are trying to
+    install.
+    
+    If you wish to install a non-Debian-packaged Python package,
+    create a virtual environment using python3 -m venv path/to/venv.
+    Then use path/to/venv/bin/python and path/to/venv/bin/pip. Make
+    sure you have python3-full installed.
+    
+    If you wish to install a non-Debian packaged Python application,
+    it may be easiest to use pipx install xyz, which will manage a
+    virtual environment for you. Make sure you have pipx installed.
+    
+    See /usr/share/doc/python3.12/README.venv for more information.
+
+note: If you believe this is a mistake, please contact your Python installation or OS distribution provider. You can override this, at the risk of breaking your Python installation or OS, by passing --break-system-packages.
+hint: See PEP 668 for the detailed specification.
+```
+
+Для установки системных Python-либ нужно использовать `apt`: `apt install python3-pip`, `apt install python3-numpy`, `apt install python3-setuptools` и т.п. В целом, навязывают использование виртуального окружения.
+
+#### `distutils`
+
+Потенциальная будущая проблема &ndash; библиотека `distutils`:
+
+```bash
+#50 0.241 <string>:1: DeprecationWarning: The distutils package is deprecated and slated for removal in Python 3.12. Use setuptools or check PEP 632 for potential alternatives
+#50 0.242 <string>:1: DeprecationWarning: The distutils.sysconfig module is deprecated, use sysconfig instead
+```
+
+На очереди модификация [build_env.sh](data/build_env.sh), в которой `distutils` используется для вывода путей до `/include` и `/lib`.
+
+### Numpy
+
+Данный фрагмент лишний (в системном репе Ubuntu 22.04 `python3-numpy` версии 1.21.5, а в [PyPI](https://pypi.org/project/numpy/) версия 2.2.1):
+
+```dockerfile
+### Update numpy
+
+RUN pip3 install -U numpy
+```
+
+#### fatal error: numpy/ndarrayobject.h: No such file or directory
+
+При возникновении ошибки [fatal error: numpy/ndarrayobject.h: No such file or directory](https://github.com/opencv/opencv/issues/11709) в процессе компиляции обычно советуют доустановить `python-numpy`, который в Ubuntu 22.04 отсутствует. В одном ответе на гитхабе и ответах на похожие вопросы на StackOverflow советуют создать символьную ссылку на папку `numpy/core/include` с заголовочными C/C++ файлами в путях интерпретатора Python3 в стандартный путь `/usr/include/numpy`.
+
+Все дело в отличии `python3-numpy` от `python-numpy`:
+
+<div align="center">
+  <img src="data/images/python3_numpy.png" width="900" title="python3_numpy"/>
+  <p style="text-align: center">
+    Рисунок 1 &ndash; Содержимое python3-numpy_1.21.5-1build2_amd64.deb в Ubuntu 22.04
+  </p>
+  <br>
+   vs
+  <br>
+  <br>
+  <img src="data/images/python_numpy.png" width="900" title="python_numpy"/>
+  <p style="text-align: center">
+    Рисунок 2 &ndash; Содержимое python-numpy_1.16.5-2ubuntu7_amd64.deb в Ubuntu 20.04
+  </p>
+</div>
+
+`python-numpy` при установке создает символьную ссылку, а `python3-numpy` &ndash; нет. Добавим вручную перед конфигурированием сборки `cmake`'ом:
+
+```dockerfile
+RUN apt-cache show cuda
+
+RUN ln -s ${py3_np_inc_dirs}/numpy /usr/include/numpy
+
+RUN . /usr/local/Dev/build_env.sh && cmake_command="-D CMAKE_BUILD_TYPE=RELEASE \
+```
+
+
+
 ### Отладка при сборке образа
+
+#### Вывод в консоль результата выполнения команды из `bash`
+
+##### Способ 1
 
 Если нужно вывести результат выполнения команды (`ls`, `echo`, `cat` и т.п.) или содержимое файла, то при сборке образа нужно указать один или два флага:
 ```bash
@@ -102,3 +220,11 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 
 Первый отключает красивый вывод лога и выводит весь лог построчно как в старые добрые времена.  
 Второй отключает кэширование, то есть ***пересобираться образ будет с 0***! Второй флаг нужен, если необходимо вывести результат команды, а слой образа уже закэширован (другими словами, из кэшированного слоя команда вывода в лог докера второй раз не сработает).
+
+##### Способ 2
+
+Например, процесс компиляции библиотеки падает с ошибкой (не найден файл и т.п.). Вместо отладочной печати в консоль без сохранения кэша слоев образа:
+- можно сохранить необходимые логи в файл, выполнить различные команды с сохранением результата выполнения в файл
+- переписать докер-файл на [многоступенчатую сборку с экспортным слоем](../../lectures/lecture_1/lecture_1.md#17-многоступенчатая-сборка-образов), который представляет собой пустой образ с экспортом данных из образа предыдущего шага на хост ОС
+
+Выше перечисленные патчи докер-файла должны привести к успешной сборке образа. Многоступенчатая сборка позволила отладить некоторые косяки. Инструкция по отладке: [многоступенчатая сборка образа с экспортным слоем (отладка)](multi_stage_build_debug.md).
