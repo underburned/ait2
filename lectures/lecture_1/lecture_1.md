@@ -11,7 +11,9 @@
 3. [Работа с Docker](#13-работа-с-docker)
 4. [Хранение данных](#14-хранение-данных)
 5. [Создание образа с использованием Dockerfile](#15-создание-образа-с-использованием-dockerfile)
-6. [Пример](#16-пример)
+6. [Синтаксис докер-файла](#16-синтаксис-докер-файла) TODO
+7. [Многоступенчатая сборка образов](#17-многоступенчатая-сборка-образов) TODO
+8. [Пример докер-файла](#18-пример-докер-файла)
 
 ### 1.1 Введение
 
@@ -374,16 +376,33 @@ docker tag ubuntu-ping:20.04 alex/ubuntu-ping:20.04 #
 docker images
 ```
 
-Вход в репозиторий `docker.io` под пользователем `alex` и публикование образа:
+Вход в репозиторий `docker.io` под пользователем `alex`, и публикование образа:
 
 ```bash
 docker login -u alex docker.io
 docker push alex/ubuntu-ping:20.04
 ```
 
-Подробнее: [Изучаем Docker, часть 3: файлы Dockerfile](https://habr.com/ru/company/ruvds/blog/439980/)
+### 1.6 Синтаксис докер-файла
 
-### 1.6 Пример
+Источники:
+- [Изучаем Docker, часть 3: файлы Dockerfile @ Хабр](https://habr.com/ru/company/ruvds/blog/439980/)
+
+> TBD
+
+### 1.7 Многоступенчатая сборка образов
+
+Источники:
+- [Изучаем Docker, часть 4: уменьшение размеров образов и ускорение их сборки @ Хабр](https://habr.com/ru/companies/ruvds/articles/440658/)
+- [Multi-stage builds @ Docker](https://docs.docker.com/build/building/multi-stage/)
+
+> TBD
+
+`--no-cache-filter`
+
+Buildkit использует граф зависимости (dependency graph). Если промежуточный этап сборки далее нигде не используется, то он будет пропущен при сборке: [Dockerfile not executing second stage](https://stackoverflow.com/questions/65235815/dockerfile-not-executing-second-stage).
+
+### 1.8 Пример докер-файла
 
 Сборка OpenCV из исходников.
 
