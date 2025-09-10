@@ -1,4 +1,4 @@
-=== cipher ==="
+=== cipher ===
 3des-cbc
 aes128-cbc
 aes192-cbc
@@ -8,19 +8,19 @@ aes192-ctr
 aes256-ctr
 aes128-gcm@openssh.com
 aes256-gcm@openssh.com
-chacha20-poly1305@openssh.com;
+chacha20-poly1305@openssh.com
 
-=== cipher-auth ==="
+=== cipher-auth ===
 aes128-gcm@openssh.com
 aes256-gcm@openssh.com
-chacha20-poly1305@openssh.com;
+chacha20-poly1305@openssh.com
 
-=== compression ==="
+=== compression ===
 none
 zlib@openssh.com
-zlib;
+zlib
 
-=== kex ==="
+=== kex ===
 diffie-hellman-group1-sha1
 diffie-hellman-group14-sha1
 diffie-hellman-group14-sha256
@@ -33,79 +33,79 @@ ecdh-sha2-nistp384
 ecdh-sha2-nistp521
 curve25519-sha256
 curve25519-sha256@libssh.org
-sntrup761x25519-sha512@openssh.com;
+sntrup761x25519-sha512@openssh.com
 
-=== kex-gss ==="
+=== kex-gss ===
 gss-gex-sha1-
 gss-group1-sha1-
 gss-group14-sha1-
 gss-group14-sha256-
 gss-group16-sha512-
 gss-nistp256-sha256-
-gss-curve25519-sha256-;
+gss-curve25519-sha256-
 
-=== key ==="
+=== key ===
 ssh-ed25519
 ssh-ed25519-cert-v01@openssh.com
 sk-ssh-ed25519@openssh.com
 sk-ssh-ed25519-cert-v01@openssh.com
-ssh-rsa
+ecdsa-sha2-nistp256
+ecdsa-sha2-nistp256-cert-v01@openssh.com
+ecdsa-sha2-nistp384
+ecdsa-sha2-nistp384-cert-v01@openssh.com
+ecdsa-sha2-nistp521
+ecdsa-sha2-nistp521-cert-v01@openssh.com
+sk-ecdsa-sha2-nistp256@openssh.com
+sk-ecdsa-sha2-nistp256-cert-v01@openssh.com
 ssh-dss
+ssh-dss-cert-v01@openssh.com
+ssh-rsa
+ssh-rsa-cert-v01@openssh.com
+
+=== key-cert ===
+ssh-ed25519-cert-v01@openssh.com
+sk-ssh-ed25519-cert-v01@openssh.com
+ecdsa-sha2-nistp256-cert-v01@openssh.com
+ecdsa-sha2-nistp384-cert-v01@openssh.com
+ecdsa-sha2-nistp521-cert-v01@openssh.com
+sk-ecdsa-sha2-nistp256-cert-v01@openssh.com
+ssh-dss-cert-v01@openssh.com
+ssh-rsa-cert-v01@openssh.com
+
+=== key-plain ===
+ssh-ed25519
+sk-ssh-ed25519@openssh.com
 ecdsa-sha2-nistp256
 ecdsa-sha2-nistp384
 ecdsa-sha2-nistp521
 sk-ecdsa-sha2-nistp256@openssh.com
-ssh-rsa-cert-v01@openssh.com
-ssh-dss-cert-v01@openssh.com
-ecdsa-sha2-nistp256-cert-v01@openssh.com
-ecdsa-sha2-nistp384-cert-v01@openssh.com
-ecdsa-sha2-nistp521-cert-v01@openssh.com
-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com;
-
-=== key-cert ==="
-ssh-ed25519-cert-v01@openssh.com
-sk-ssh-ed25519-cert-v01@openssh.com
-ssh-rsa-cert-v01@openssh.com
-ssh-dss-cert-v01@openssh.com
-ecdsa-sha2-nistp256-cert-v01@openssh.com
-ecdsa-sha2-nistp384-cert-v01@openssh.com
-ecdsa-sha2-nistp521-cert-v01@openssh.com
-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com;
-
-=== key-plain ==="
-ssh-ed25519
-sk-ssh-ed25519@openssh.com
-ssh-rsa
 ssh-dss
-ecdsa-sha2-nistp256
-ecdsa-sha2-nistp384
-ecdsa-sha2-nistp521
-sk-ecdsa-sha2-nistp256@openssh.com;
+ssh-rsa
 
-=== key-sig ==="
+=== key-sig ===
 ssh-ed25519
 ssh-ed25519-cert-v01@openssh.com
 sk-ssh-ed25519@openssh.com
 sk-ssh-ed25519-cert-v01@openssh.com
-ssh-rsa
-rsa-sha2-256
-rsa-sha2-512
-ssh-dss
 ecdsa-sha2-nistp256
+ecdsa-sha2-nistp256-cert-v01@openssh.com
 ecdsa-sha2-nistp384
+ecdsa-sha2-nistp384-cert-v01@openssh.com
 ecdsa-sha2-nistp521
+ecdsa-sha2-nistp521-cert-v01@openssh.com
 sk-ecdsa-sha2-nistp256@openssh.com
+sk-ecdsa-sha2-nistp256-cert-v01@openssh.com
 webauthn-sk-ecdsa-sha2-nistp256@openssh.com
-ssh-rsa-cert-v01@openssh.com
-rsa-sha2-256-cert-v01@openssh.com
-rsa-sha2-512-cert-v01@openssh.com
+ssh-dss
 ssh-dss-cert-v01@openssh.com
-ecdsa-sha2-nistp256-cert-v01@openssh.com
-ecdsa-sha2-nistp384-cert-v01@openssh.com
-ecdsa-sha2-nistp521-cert-v01@openssh.com
-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com;
+ssh-rsa
+ssh-rsa-cert-v01@openssh.com
+rsa-sha2-256
+rsa-sha2-256-cert-v01@openssh.com
+rsa-sha2-512
+rsa-sha2-512-cert-v01@openssh.com
 
-=== mac ==="
+=== mac ===
 hmac-sha1
 hmac-sha1-96
 hmac-sha2-256
@@ -121,21 +121,20 @@ hmac-sha2-512-etm@openssh.com
 hmac-md5-etm@openssh.com
 hmac-md5-96-etm@openssh.com
 umac-64-etm@openssh.com
-umac-128-etm@openssh.com;
+umac-128-etm@openssh.com
 
-=== protocol-version ==="
-2;
+=== protocol-version ===
+2
 
-=== sig ==="
+=== sig ===
 ssh-ed25519
 sk-ssh-ed25519@openssh.com
-ssh-rsa
-rsa-sha2-256
-rsa-sha2-512
-ssh-dss
 ecdsa-sha2-nistp256
 ecdsa-sha2-nistp384
 ecdsa-sha2-nistp521
 sk-ecdsa-sha2-nistp256@openssh.com
-webauthn-sk-ecdsa-sha2-nistp256@openssh.com;
-
+webauthn-sk-ecdsa-sha2-nistp256@openssh.com
+ssh-dss
+ssh-rsa
+rsa-sha2-256
+rsa-sha2-512

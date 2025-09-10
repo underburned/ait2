@@ -2,21 +2,22 @@
 
 ## Лекции
 
-1. [SSH](lectures/lecture_1/lecture_1.md)
-2. [Контейнеризация. Docker](lectures/lecture_2/lecture_2.md)
-3. [Мультиконтейнерные приложения. Docker Compose](lectures/lecture_3/lecture_3.md)
-4. [Клиент-серверное приложение с использованием Docker](lectures/lecture_4/lecture_4.md) **[WIP]**
+1. [Организация удаленного доступа с использованием SSH](lectures/lecture_1/lecture_1.md)
+2. [Контейнеризация. Docker](lectures/lecture_2/lecture_2.md) **[возможно обновление]**
+3. [Мультиконтейнерные приложения. Docker Compose](lectures/lecture_3/lecture_3.md) **[возможно обновление]**
+4. [Клиент-серверное приложение с использованием Docker](lectures/lecture_4/lecture_4.md) **[в процессе доработки]**
+5. **[TBA]**
 
 ## Лабораторные работы
 
-1. [Docker. Сборка OpenCV](labs/lab_1/lab_1.md)
-2. [Docker Compose](labs/lab_2/lab_2.md)
-3. [Клиент-серверное приложение с использованием Docker](labs/lab_3/lab_3.md)
+1. [Docker. Сборка OpenCV](labs/lab_1/lab_1.md) **[возможно обновление]**
+2. [Docker Compose](labs/lab_2/lab_2.md) **[возможно обновление]**
+3. [Клиент-серверное приложение с использованием Docker](labs/lab_3/lab_3.md) **[возможно обновление]**
+4. **[TBA]**
 
 ### Требования к оформлению лабораторных работ
 
 1. Желательно прокомментировать блоки кода, выполняющие ту или иную функцию.
-
 2. Онлайн-демонстрация :grinning:
 
 ## Misc
