@@ -1,9 +1,9 @@
 # Лабораторная работа №2. Docker Compose
 
 Лекции:
-- [SSH](../../lectures/lecture_0/lecture_0.md)
-- [Контейнеризация. Docker](../../lectures/lecture_1/lecture_1.md)
-- [Мультиконтейнерные приложения. Docker Compose](../../lectures/lecture_2/lecture_2.md)
+- [SSH](../../lectures/lecture_1/lecture_1.md)
+- [Контейнеризация. Docker](../../lectures/lecture_2/lecture_2.md)
+- [Мультиконтейнерные приложения. Docker Compose](../../lectures/lecture_3/lecture_3.md)
 
 ## Задание
 

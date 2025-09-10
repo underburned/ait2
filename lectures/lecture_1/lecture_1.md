@@ -1,549 +1,1522 @@
 # Технологии искусственного интеллекта. Семестр 2
 
-© Петров М.В., старший преподаватель кафедры суперкомпьютеров и общей информатики, Самарский университет
+© Петров М.В., старший преподаватель кафедры киберфотоники, Самарский университет
 
-## Лекция 1. Контейнеризация. Docker
+## Лекция 0. SSH
 
 ### Содержание
 
-1. [Введение](#11-введение)
-2. [Контейнер](#12-контейнер)
-3. [Работа с Docker](#13-работа-с-docker)
-4. [Хранение данных](#14-хранение-данных)
-5. [Создание образа с использованием Dockerfile](#15-создание-образа-с-использованием-dockerfile)
-6. [Синтаксис докер-файла](#16-синтаксис-докер-файла) TODO
-7. [Многоступенчатая сборка образов](#17-многоступенчатая-сборка-образов) TODO
-8. [Пример докер-файла](#18-пример-докер-файла)
+1. [Введение](#01-введение)
+2. [SSH-сервер](#02-ssh-сервер)
+3. [SSH-клиенты](#03-ssh-клиенты)
+4. [Файлы настроек SSH](#04-файлы-настроек-ssh)
+5. [Генерация ключей](#05-генерация-ключей)
+6. [Настройка сервера и клиента](#06-настройка-сервера-и-клиента)
+7. [Настройка файервола UFW](#07-настройка-файервола-ufw)
+8. [Туннелирование SSH](#08-туннелирование-ssh)
+9. [Обратное туннелирование SSH](#09-обратное-туннелирование-ssh)
+10. [Файл конфигурации config](#010-файл-конфигурации-config)
+11. [Разное](#011-разное)
 
-### 1.1 Введение
+### 0.1 Введение
 
 Источники:
- - [Полное практическое руководство по Docker: с нуля до кластера на AWS @ Хабр](https://habr.com/ru/articles/310460/)
- - [Основы контейнеризации (обзор Docker и Podman) @ Хабр](https://habr.com/ru/articles/659049/)
- - [Руководство по Docker Compose для начинающих @ Хабр](https://habr.com/ru/companies/ruvds/articles/450312/)
+- [SSH @ Википедия](https://ru.wikipedia.org/wiki/SSH)
+- [OpenSSH @ Википедия](https://ru.wikipedia.org/wiki/OpenSSH)
+- [Знакомство с SSH @ Хабр](https://habr.com/ru/articles/802179/)
+- [Памятка пользователям ssh @ Хабр](https://habr.com/ru/articles/122445/)
+- [Настройка SSH сервера в Windows](https://winitpro.ru/index.php/2019/10/17/windows-openssh-server/)
+- [Как установить и настроить SSH](https://help.reg.ru/support/servery-vps/oblachnyye-servery/rabota-s-serverom/kak-ustanovit-i-nastroit-ssh)
+- [Лучшие SSH-клиенты для Windows, Linux и macOS](https://timeweb.com/ru/community/articles/luchshie-ssh-klienty-dlya-windows-linux-i-macos)
 
-> [Docker](https://ru.wikipedia.org/wiki/Docker) &ndash; программное обеспечение для автоматизации развёртывания и управления приложениями в средах с поддержкой контейнеризации, контейнеризатор приложений. Позволяет "упаковать" приложение со всем его окружением и зависимостями в контейнер, который может быть развёрнут на любой Linux-системе с поддержкой контрольных групп в ядре, а также предоставляет набор команд для управления этими контейнерами. Изначально использовал возможности `LXC`, с 2015 года начал использовать собственную библиотеку, абстрагирующую виртуализационные возможности ядра Linux &ndash; `libcontainer`. С появлением `Open Container Initiative` начался переход от монолитной к модульной архитектуре. Разрабатывается и поддерживается одноимённой компанией-стартапом, распространяется в двух редакциях &ndash; общественной (Community Edition) по лицензии Apache 2.0 и для организаций (Enterprise Edition) по проприетарной лицензии. Написан на языке `Go`.
+***SSH*** (***Secure Shell*** &ndash; "безопасная оболочка") &ndash; сетевой протокол прикладного уровня, позволяющий производить удалённое управление операционной системой и туннелирование *TCP*-соединений (например, для передачи файлов). Схож по функциональности с протоколами *Telnet* и *rlogin*, но, в отличие от них, шифрует весь трафик, включая и передаваемые пароли. SSH допускает выбор различных алгоритмов шифрования. SSH-клиенты и SSH-серверы доступны для большинства сетевых операционных систем.  
 
-Докер это инструмент, который позволяет разработчикам, системным администраторам и другим специалистам деплоить приложения в песочнице (которая называются контейнером), для запуска на целевой операционной системе, например, Linux. Ключевое преимущество докера в том, что он позволяет пользователям упаковывать приложение со всеми его зависимостями в стандартизированный модуль для разработки. В отличие от виртуальных машин, контейнеры не создают такой дополнительной нагрузки, поэтому с ними можно использовать систему и ресурсы более эффективно.
+SSH-сервер обычно прослушивает соединения на TCP-порту $22$. Для аутентификации сервера в SSH используется протокол аутентификации сторон на основе алгоритмов электронно-цифровой подписи, но допускается также аутентификация при помощи пароля (режим обратной совместимости с Telnet) и даже IP-адреса хоста (режим обратной совместимости с rlogin).  
 
-#### История
-
-Идея изоляции пользовательских пространств берет свое начало в 1979 году, когда в ядре UNIX появился системный вызов `chroot`. Он позволял изменить путь каталога корня `/` для группы процессов на новую локацию в файловой системе, то есть фактически создавал новый корневой каталог, который был изолирован от первого. Следующим шагом и логическим продолжением `chroot` стало создание в 2000 году FreeBSD `jails` ("тюрем"), в которых изначально появилась частичная изоляция сетевых интерфейсов. В первой половине нулевых технологии виртуализации на уровне ОС активно развивались &ndash; появились *Linux VServer* (2001), *Solaris Containers* (2004) и *OpenVZ* (2005).
-
-В операционной системе Linux технологии изоляции и виртуализации ресурсов вышли на новый этап в 2002 году, когда в ядро было добавлено первое пространство имен для изоляции файловой системы &ndash; `mount`. В 2006-2007 годах компанией Google был разработан механизм *Process Containers* (позднее переименованный в `cgroups`), который позволил ограничить и изолировать использование группой процессов ЦПУ, ОЗУ и др. аппаратных ресурсов. В 2008 году функционал `cgroups` был добавлен в ядро Linux. Достаточная функциональность для полной изоляции и безопасной работы контейнеров была завершена в 2013 году с добавлением в ядро пространства имен пользователей &ndash; `user`.
-
-В 2008 году была представлена система `LXC` (*LinuX Containers*), которая позволяла запускать несколько изолированных Linux систем (контейнеров) на одном сервере. LXC использовала для работы механизмы изоляции ядра &ndash; `namespaces` и `cgroups`. В 2013 году на свет появилась платформа `Docker`, невиданно популяризовавшая контейнерные технологии за счет простоты использования и широкого функционала. Изначально `Docker` использовал LXC для запуска контейнеров, однако позднее перешел на собственную библиотеку `libcontainer`, также завязанную на функционал ядра Linux. Наконец, в 2015 появился проект *Open Container Initiative* (*OCI*), который регламентирует и стандартизирует развитие контейнерных технологий по сей день.
-
-Подробнее: [Недостающее введение в контейнеризацию @ Хабр](https://habr.com/ru/articles/541288/)
-
-### 1.2 Контейнер
-
-Контейнеризация (виртуализация на уровне ОС) &ndash; технология, которая позволяет запускать программное обеспечение в изолированных на уровне операционной системы пространствах. Контейнеры являются наиболее распространенной формой виртуализации на уровне ОС. С помощью контейнеров можно запустить несколько приложений на одном сервере (хостовой машине), изолируя их друг от друга.
+3 режима аутентификации:
+- Аутентификация по паролю.  
+  Наиболее распространенный вариант. Вводить пароль необходимо при каждом подключении. Пароль передается в зашифрованном виде.  
+- Аутентификация по ключевой паре.  
+  Предварительно генерируется публичный (открытый) и приватный (закрытый) ключи (`pulic key` и `private key`) для определённого пользователя. На машине, с которой требуется произвести подключение, хранится приватный и публичный ключи, а на удалённой машине &ndash; публичный. Эти файлы не передаются при аутентификации, система лишь проверяет, что владелец публичного ключа также владеет и приватным. При данном подходе, как правило, настраивается автоматический вход от имени конкретного пользователя в ОС.
+- Аутентификация по IP-адресу.  
+  Аутентификация по IP-адресу небезопасна из-за риска подмены адреса, эту возможность чаще всего отключают.  
 
 <div align="center">
-  <img src="images/docker_vs_vm.svg" width="1000" title="Docker vs VM"/>
+  <img src="images/SSH_schema.svg" width="800" title="SSH"/>
   <p style="text-align: center">
-    Рисунок 1 &ndash; Сравнение докера с виртуальными машинами
+    Рисунок 1 &ndash; SSH соединения
   </p>
 </div>
 
-Процесс, запущенный в контейнере, выполняется внутри операционной системы хостовой машины, но при этом он изолирован от остальных процессов. Для самого процесса это выглядит так, будто он единственный работает в системе.
+SSH обеспечивает безопасность соединения с удалённой машиной с использованием современных алгоритмов шифрования. Вся пересылаемая информация между узлами находится внутри зашифрованного туннеля.
 
-#### Механизмы изоляции контейнеров
+### 0.2 SSH-сервер
 
-Изоляция процессов в контейнерах осуществляется благодаря двум механизмам ядра Linux &ndash; пространствам имен (`namespaces`) и контрольным группам (`cgroups`).
-Пространства имен гарантируют, что процесс будет работать с собственным представлением системы. Существует несколько типов пространств имен:
- - файловая система (`mount`, `mnt`) &ndash; изолирует файловую систему
- - UTS (UNIX Time-Sharing, `uts`) &ndash; изолирует имя хоста и доменное имя
- - идентификатор процессов (`process identifier`, `pid`) &ndash; изолирует процессы
- - сеть (`network`, `net`) &ndash; изолирует сетевые интерфейсы
- - межпроцессное взаимодействие (`ipc`) &ndash; изолирует конкурирующее взаимодействие процессами
- - пользовательские идентификаторы (`user`) &ndash; изолирует ID пользователей и групп
+В Linux системах обычно используется ***OpenSSH***, где сервер обозначается ***sshd***, что означает *SSH демон* (*SSH Daemon*). Клиент SSH &ndash; ***ssh***. Все необходимые настройки для клиента и сервера в Linux системах обычно хранятся в директории `/etc/ssh/`. По префиксу имени файла можно догадаться, к клиенту или серверу имеет отношение файл настройки. Все настройки имеют глобальный характер, т.е. актуальны для всех пользователей устройства.
 
-Контрольные группы гарантируют, что процесс не будет конкурировать за ресурсы, зарезервированные за другими процессами. Они ограничивают (контролируют) объем ресурсов, который процесс может потреблять &ndash; ЦПУ, ОЗУ, пропускную способность сети и др.
+> ***OpenSSH*** (*Open Secure Shell* &ndash; открытая безопасная оболочка) &ndash; набор программ, предоставляющих шифрование сеансов связи по компьютерным сетям с использованием протокола SSH. Он был создан под руководством Тео де Раадта как открытая альтернатива проприетарного ПО от SSH Communications Security.
 
-Подробнее:
-- [Механизмы контейнеризации: namespaces @ Хабр](https://habr.com/ru/company/selectel/blog/279281/)
-- [Механизмы контейнеризации: cgroups @ Хабр](https://habr.com/ru/company/selectel/blog/303190/)
+Кроме глобальных настроек, каждый из пользователей может хранить свою конфигурацию в домашней директории в папке `~/.ssh/`. Файлы используются как клиентом SSH, так и при подключении к серверу из папки пользователя, который указан при подключении.
 
-#### Основные понятия
+Стандартный конфиг `/etc/ssh/sshd_config` для ОС `Ubuntu 22.04`:
+```bash
 
-- `Container image` (образ) &ndash; файл, в который упаковано приложение и его среда. Он содержит файловую систему, которая будет доступна приложению, и другие метаданные (например команды, которые должны быть выполнены при запуске контейнера). Образы контейнеров состоят из слоев (как правило один слой &ndash; одна инструкция). Разные образы могут содержать одни и те же слои, поскольку каждый слой надстроен поверх другого образа, а два разных образа могут использовать один и тот же родительский образ в качестве основы. Образы хранятся в `Registry Server` (реестре) и версионируются с помощью `tag` (тегов). Если тег не указан, то по умолчанию используется `latest`. Примеры: [Ubuntu @ DockerHub](https://hub.docker.com/_/ubuntu), [Postgres @ DockerHub](https://hub.docker.com/_/postgres), [NGINX @ DockerHub](https://hub.docker.com/_/nginx).
+# This is the sshd server system-wide configuration file.  See
+# sshd_config(5) for more information.
 
-- `Registry Server` (реестр, хранилище) &ndash; это репозиторий, в котором хранятся образы. После создания образа на локальном компьютере его можно отправить (`push`) в хранилище, а затем извлечь (`pull`) на другом компьютере и запустить его там. Существуют общедоступные и закрытые реестры образов. Примеры: [Docker Hub](https://hub.docker.com/) (репозитории `docker.io`), [RedHat Quay.io](https://quay.io/search) (репозитории `quay.io`).
+# This sshd was compiled with PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 
-- `Container` (контейнер) &ndash; это экземпляр образа контейнера. Выполняемый контейнер &ndash; это запущенный процесс, изолированный от других процессов на сервере и ограниченный выделенным объемом ресурсов (ЦПУ, ОЗУ, диска и др.). Выполняемый контейнер сохраняет все слои образа с доступом на чтение и формирует сверху свой исполняемый слой с доступом на запись.
+# The strategy used for options in the default sshd_config shipped with
+# OpenSSH is to specify options with their default value where
+# possible, but leave them commented.  Uncommented options override the
+# default value.
 
-- `Container Engine` (движок контейнеризации) &ndash; это программная платформа для упаковки, распространения и выполнения приложений, которая скачивает образы и с пользовательской точки зрения запускает контейнеры (на самом деле за создание и запуск контейнеров отвечает `Container Runtime`). Примеры: [Docker](https://docs.docker.com/get-started/overview/), [Podman](https://docs.podman.io/en/latest/).
+Include /etc/ssh/sshd_config.d/*.conf
 
-- `Container Runtime` (среда выполнения контейнеров) &ndash; программный компонент для создания и запуска контейнеров. Примеры: [runc](https://github.com/opencontainers/runc) (инструмент командной строки, основанный на упоминавшейся выше библиотеке `libcontainer`), [crun](https://github.com/containers/crun).
+#Port 22
+#AddressFamily any
+#ListenAddress 0.0.0.0
+#ListenAddress ::
 
-- `Host` (хост) &ndash; сервер, на котором запущен `Container Engine` и выполняются контейнеры.
+#HostKey /etc/ssh/ssh_host_rsa_key
+#HostKey /etc/ssh/ssh_host_ecdsa_key
+#HostKey /etc/ssh/ssh_host_ed25519_key
 
-[Open Container Initiative](https://opencontainers.org/) (OCI) &ndash; это проект Linux Foundation, основанный в 2015 году компанией Docker, Inc, целью которого является разработка стандартов контейнеризации. В настоящее время в проекте участвуют такие компании, как Google, RedHat, Microsoft и др. OCI поддерживает спецификации [image-spec](https://github.com/opencontainers/image-spec) (формат образов) и [runtime-speс](https://github.com/opencontainers/runtime-spec) (`Container Runtime`).
+# Ciphers and keying
+#RekeyLimit default none
+
+# Logging
+#SyslogFacility AUTH
+#LogLevel INFO
+
+# Authentication:
+
+#LoginGraceTime 2m
+#PermitRootLogin prohibit-password
+#StrictModes yes
+#MaxAuthTries 6
+#MaxSessions 10
+
+#PubkeyAuthentication yes
+
+# Expect .ssh/authorized_keys2 to be disregarded by default in future.
+#AuthorizedKeysFile	.ssh/authorized_keys .ssh/authorized_keys2
+
+#AuthorizedPrincipalsFile none
+
+#AuthorizedKeysCommand none
+#AuthorizedKeysCommandUser nobody
+
+# For this to work you will also need host keys in /etc/ssh/ssh_known_hosts
+#HostbasedAuthentication no
+# Change to yes if you don't trust ~/.ssh/known_hosts for
+# HostbasedAuthentication
+#IgnoreUserKnownHosts no
+# Don't read the user's ~/.rhosts and ~/.shosts files
+#IgnoreRhosts yes
+
+# To disable tunneled clear text passwords, change to no here!
+#PasswordAuthentication yes
+#PermitEmptyPasswords no
+
+# Change to yes to enable challenge-response passwords (beware issues with
+# some PAM modules and threads)
+KbdInteractiveAuthentication no
+
+# Kerberos options
+#KerberosAuthentication no
+#KerberosOrLocalPasswd yes
+#KerberosTicketCleanup yes
+#KerberosGetAFSToken no
+
+# GSSAPI options
+#GSSAPIAuthentication no
+#GSSAPICleanupCredentials yes
+#GSSAPIStrictAcceptorCheck yes
+#GSSAPIKeyExchange no
+
+# Set this to 'yes' to enable PAM authentication, account processing,
+# and session processing. If this is enabled, PAM authentication will
+# be allowed through the KbdInteractiveAuthentication and
+# PasswordAuthentication.  Depending on your PAM configuration,
+# PAM authentication via KbdInteractiveAuthentication may bypass
+# the setting of "PermitRootLogin without-password".
+# If you just want the PAM account and session checks to run without
+# PAM authentication, then enable this but set PasswordAuthentication
+# and KbdInteractiveAuthentication to 'no'.
+UsePAM yes
+
+#AllowAgentForwarding yes
+#AllowTcpForwarding yes
+#GatewayPorts no
+X11Forwarding yes
+#X11DisplayOffset 10
+#X11UseLocalhost yes
+#PermitTTY yes
+PrintMotd no
+#PrintLastLog yes
+#TCPKeepAlive yes
+#PermitUserEnvironment no
+#Compression delayed
+#ClientAliveInterval 0
+#ClientAliveCountMax 3
+#UseDNS no
+#PidFile /run/sshd.pid
+#MaxStartups 10:30:100
+#PermitTunnel no
+#ChrootDirectory none
+#VersionAddendum none
+
+# no default banner path
+#Banner none
+
+# Allow client to pass locale environment variables
+AcceptEnv LANG LC_*
+
+# override default of no subsystems
+Subsystem	sftp	/usr/lib/openssh/sftp-server
+
+# Example of overriding settings on a per-user basis
+#Match User anoncvs
+#	X11Forwarding no
+#	AllowTcpForwarding no
+#	PermitTTY no
+#	ForceCommand cvs server
+```
+
+В состав OpenSSH входят следующие компоненты:
+- `ssh`  
+  Замена для rlogin и telnet.
+- `scp`  
+  Замена для rcp, использующая в современных версиях OpenSSH протокол ***SFTP*** (ранее использовался менее надёжный и гибкий *SCP*).
+- `sftp`  
+  Замена для FTP-клиента, использующая протокол SFTP.
+- `sshd` 
+  Демон, собственно предоставляющий защищённый доступ к ресурсам. Включает реализацию серверной части SFTP, пригодную для организации chroot-доступа для пользователей без необходимости копирования каких-либо файлов внутрь `chroot`.
+- `sftp-server`  
+  Отдельная реализация подсистемы SFTP (серверная часть). Обладает бо́льшими возможностями, чем встроенная в sshd.
+- `ssh-keygen`
+  Генератор пар ключей.
+- `ssh-keysign`  
+  Утилита для проверки ключей хостов. Задействуется при использовании аутентификации по хостам (аналогично `rsh`) вместо проводимой по умолчанию аутентификации по пользователям.
+- `ssh-keyscan`  
+  Вспомогательная утилита. Позволяет собирать публичные ключи с других хостов.
+- `ssh-agent`  
+  Вспомогательная утилита. Поддерживает кэш закрытых ключей. Кэширование позволяет избегать частого ввода пароля для расшифровки ключей перед их использованием.
+- `ssh-add`  
+  Вспомогательная утилита. Добавляет ключи в кэш `ssh-agent`.
+
+#### Установка в Linux
+
+В большинстве дистрибутивов OpenSSH-сервер уже присутствует в системе, и его установка не требуется. В случае отсутствия OpenSSH в терминале необходимо выполнить следующую команду:
+
+```bash
+sudo apt install openssh-server -y
+```
+
+В случае отсутствия установленного OpenSSH в ОС необходимо добавить SSH-сервер в автозагрузку. При следующем запуске сервера операционная система выполнит автоматический запуск SSH-сервера. Как и в случае с другими сервисами, `systemd` позволяет управлять параметрами запуска, автозагрузки и рестарта демона OpenSSH. Включим автозапуск:
+
+```bash
+sudo systemctl enable sshd
+```
+
+Проверка работы SSH:
+
+```bash
+systemctl status sshd
+```
+
+Пример вывода:
+
+```bash
+ruser@palitpc:~$ systemctl status sshd
+● ssh.service - OpenBSD Secure Shell server
+     Loaded: loaded (/lib/systemd/system/ssh.service; enabled; vendor preset: enabled)
+     Active: active (running) since Thu 2024-07-04 15:32:42 +04; 2 months 13 days ago
+       Docs: man:sshd(8)
+             man:sshd_config(5)
+   Main PID: 1237 (sshd)
+      Tasks: 1 (limit: 76769)
+     Memory: 8.1M
+        CPU: 470ms
+     CGroup: /system.slice/ssh.service
+             └─1237 "sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups"
+
+Warning: some journal files were not opened due to insufficient permissions.
+```
+
+#### Установка в Windows
+
+Пакет OpenSSH Server включен в современные версии Windows 10 (начиная с 1803), Windows 11 и Windows Server в виде Feature on Demand (FoD).
+
+ - Способ 1. `PowerShell`  
+   Для установки сервера OpenSSH достаточно выполнить в `PowerShell` команду (`PowerShell` необходимо запустить с правами администратора):
+   ```powershell
+   Get-WindowsCapability -Online | Where-Object Name -like ‘OpenSSH.Server*’ | Add-WindowsCapability –Online
+   ```
+ - Способ 2. Командная строка (терминал)  
+   В командной строке или терминале выполнить следующую команду (тоже с правами администратора):
+   ```batch
+   dism /Online /Add-Capability /CapabilityName:OpenSSH.Server~~~~0.0.1.0
+   ```
+ - Способ 3. Параметры  
+   Также возможно установить сервер OpenSSH в Windows через современную панель Параметры (Settings -> Apps and features -> Optional features -> Add a feature, Приложения -> Управление дополнительными компонентами -> Добавить компонент. Найдите в списке OpenSSH Server и нажмите кнопку Install).
+   > В инкрементальных мажорных обновлениях Windows 11 легко запутаться, некоторые настройки запрятаны в интуитивно непонятных (user unfriendly) разделах, так что проще использовать команды.
+
+### 0.3 SSH-клиенты
+
+Существует множество различных SSH-клиентов и комбайнов под разные семейства ОС.  
+
+#### Windows
+
+В Windows наиболее популярными клиентами являются:
+- [PuTTY](https://www.putty.org/).  
+  Свободно распространяемый клиент для различных протоколов удалённого доступа, включая SSH, Telnet, rlogin. Также имеется возможность работы через последовательный порт.  
+  
+  <div align="center">
+    <br>
+    <img src="images/PuTTY.png" width="452" title="PuTTY"/>
+      <p style="text-align: center">
+          Рисунок 2 &ndash; PuTTY
+      </p>
+  </div>
+- [WinSCP](https://winscp.net/eng/docs/lang:ru)  
+  Свободный графический клиент протоколов SFTP и SCP, предназначенный для Windows. Распространяется по лицензии GNU GPL. Обеспечивает защищённое копирование файлов между компьютером и серверами, поддерживающими эти протоколы.
+    
+  <div align="center">
+    <br>
+    <img src="images/WinSCP.png" width="946" title="WinSCP"/>
+      <p style="text-align: center">
+          Рисунок 3 &ndash; WinSCP
+      </p>
+  </div>
+- [MobaXterm](https://mobaxterm.mobatek.net/)  
+  Многофункциональный SSH-клиент, полюбившийся пользователям за высокую скорость работы, комфортный интерфейс и кучу дополнительных функций, отсутствующих у конкурентов. В нем есть браузер файлов, встроенный XServer для управления графическим интерфейсом на удаленном компьютере, масса плагинов, расширяющих возможности клиента, и portable-версия, работающая без установки. Проект условно-бесплатный, в бесплатной версии (Home Edition) присутствует множество ограничений, например, максимально допустимое количество сохраняемых сессий &ndash; $12$.
+
+  <div align="center">
+    <br>
+    <img src="images/MobaXterm.png" width="1184" title="MobaXterm"/>
+      <p style="text-align: center">
+          Рисунок 4 &ndash; MobaXterm
+      </p>
+  </div>
+
+#### Linux
+
+В UNIX-подобных операционных системах есть встроенная поддержка OpenSSH. Можно использовать базовый терминал для подключения к удаленному серверу и управлению им.  
+Одним из распространенных комбайнов является [Remmina](https://remmina.org/). Поддерживает множество дистрибутивов: [How to install Remmina](https://remmina.org/how-to-install-remmina/).
+
+#### MacOS
+
+macOS поддерживает подключение по протоколу SSH прямо из встроенного терминала.
+
+#### Кроссплатформа
+
+- [Hyper](https://hyper.is/)  
+  В отличие от других SSH-клиентов, этот не отличается какой-то специфичной функциональностью. Напротив, он практически полностью повторяет функциональность базовой командной строки. Поэтому пользователям он нравится не за обилие возможностей, а за простоту и симпатичный внешний облик. По словам разработчиков, это попытка создать максимально быстрый и надежный терминал. Это был их приоритет при разработке. При этом он построен на базе фреймворка Electron, что делает его универсальным и расширяемым.  
+    
+  <div align="center">
+    <br>
+    <img src="images/Hyper.png" width="540" title="Hyper"/>
+      <p style="text-align: center">
+          Рисунок 5 &ndash; Hyper
+      </p>
+  </div>
+- [Tabby](https://tabby.sh/)  
+  Терминал нового поколения (как его называют разработчики). Кроссплатформенный эмулятор терминала с поддержкой WSL, PowerShell, Cygwin, Clink, cmder, git-bash и десятка других технологий. Есть полезные опции, такие как восстановление закрытых вкладок из предыдущей сессии и кликабельные пути к директориям. Интерфейс Tabby можно настроить под себя с помощью разметки CSS. То же касается и функциональной составляющей. Ее можно расширить за счет сторонних плагинов, число которых постепенно растет.  
+
+  <div align="center">
+    <br>
+    <img src="images/Tabby_1.png" width="800" title="Tabby"/>
+      <p style="text-align: center">
+          Рисунок 6 &ndash; Tabby
+      </p>
+    <br>
+    <img src="images/Tabby_2.png" width="800" title="Tabby"/>
+      <p style="text-align: center">
+          Рисунок 7 &ndash; Tabby: SFTP
+      </p>
+    <br>
+    <img src="images/Tabby_3.png" width="800" title="Tabby"/>
+      <p style="text-align: center">
+          Рисунок 8 &ndash; Tabby: автоматическое чтение настроек из "~/.ssh/config"
+      </p>
+  </div>
+- [WindTerm](https://kingtoolbox.github.io/)  
+  Бесплатный клиент для протоколов SSH/SFTP/Shell/Telnet/Serial. WindTerm полностью бесплатнен как для коммерческого, так и некоммерческого использования. Весь опубликованный на текущий момент исходный код предоставляются на условиях лицензии Apache-2.0. Исключение составляет код сторонних разработчиков. WindTerm является проектом с частично открытым исходным кодом, и исходный код будет постепенно открываться.  
+    
+  <div align="center">
+    <br>
+    <img src="images/WindTerm.png" width="1228" title="WindTerm"/>
+      <p style="text-align: center">
+          Рисунок 9 &ndash; WindTerm
+      </p>
+  </div>
+
+### 0.4 Файлы настроек SSH
+
+- Файл `config` &ndash; файл настройки клиента. Позволяет настраивать параметры соединений, чтобы не было необходимости каждый раз указывать опции для каждого конкретного сервера. Список возможных параметров можно посмотреть здесь: [SSH config file for OpenSSH client](https://www.ssh.com/academy/ssh/config).
+- Файл `authorized_keys` содержит список публичных ключей для доступа к серверу sshd на этой машине (SSH-сервер).
+- Файл `known_hosts` содержит список ключей для хостов, к которым ранее уже было произведено подключение. Это один из инструментов безопасности. При первом подключении к серверу клиент получает подпись его ключа доступа, которую в дальнейшем будет использоваться для проверки легитимности хоста. При повторном подключении эти данные позволяют проверить, что это именно тот сервер, к которому клиент подключался ранее.
+- Файлы `id_*` содержат приватные ключи доступа для текущего устройства. Вместо * в имени файла как правило присутствует имя используемого алгоритма шифрования. Ключей может быть несколько, для каждого запрошенного алгоритма шифрования. Эти файлы должны храниться в полной секретности. Никому их передавать нельзя. На ключи доступа можно установить пароль, без которого невозможно будет воспользоваться этим ключом. В таком случае даже в случае утечки ключа воспользоваться им будет невозможно без знания пароля.
+- Файлы `id_*.pub` содержат публичные ключи доступа, которые используются для подключения к другим устройствам. Вместо * в имени файла присутствует имя используемого алгоритма шифрования, которые предоставляет удалённое устройство при подключении. Ключей может быть несколько, для каждого доступного алгоритма шифрования.
+
+Вообще, имена публичных ключей шифрования могут быть любыми. В этом случае при подключении нужно прямо указать путь к ключу при подключении к удалённой машине. Сделать это можно через параметры командной строки или через файл конфигурации `config`.
+
+### 0.5 Генерация ключей
+
+Свой ключ можно сгенерировать с помощью команды `ssh-keygen`:
+
+```bash
+usage: ssh-keygen [-q] [-a rounds] [-b bits] [-C comment] [-f output_keyfile]
+                  [-m format] [-N new_passphrase] [-O option]
+                  [-t dsa | ecdsa | ecdsa-sk | ed25519 | ed25519-sk | rsa]
+                  [-w provider] [-Z cipher]
+       ssh-keygen -p [-a rounds] [-f keyfile] [-m format] [-N new_passphrase]
+                   [-P old_passphrase] [-Z cipher]
+       ssh-keygen -i [-f input_keyfile] [-m key_format]
+       ssh-keygen -e [-f input_keyfile] [-m key_format]
+       ssh-keygen -y [-f input_keyfile]
+       ssh-keygen -c [-a rounds] [-C comment] [-f keyfile] [-P passphrase]
+       ssh-keygen -l [-v] [-E fingerprint_hash] [-f input_keyfile]
+       ssh-keygen -B [-f input_keyfile]
+       ssh-keygen -D pkcs11
+       ssh-keygen -F hostname [-lv] [-f known_hosts_file]
+       ssh-keygen -H [-f known_hosts_file]
+       ssh-keygen -K [-a rounds] [-w provider]
+       ssh-keygen -R hostname [-f known_hosts_file]
+       ssh-keygen -r hostname [-g] [-f input_keyfile]
+       ssh-keygen -M generate [-O option] output_file
+       ssh-keygen -M screen [-f input_file] [-O option] output_file
+       ssh-keygen -I certificate_identity -s ca_key [-hU] [-D pkcs11_provider]
+                  [-n principals] [-O option] [-V validity_interval]
+                  [-z serial_number] file ...
+       ssh-keygen -L [-f input_keyfile]
+       ssh-keygen -A [-a rounds] [-f prefix_path]
+       ssh-keygen -k -f krl_file [-u] [-s ca_public] [-z version_number]
+                  file ...
+       ssh-keygen -Q [-l] -f krl_file [file ...]
+       ssh-keygen -Y find-principals -s signature_file -f allowed_signers_file
+       ssh-keygen -Y match-principals -I signer_identity -f allowed_signers_file
+       ssh-keygen -Y check-novalidate -n namespace -s signature_file
+       ssh-keygen -Y sign -f key_file -n namespace file [-O option] ...
+       ssh-keygen -Y verify -f allowed_signers_file -I signer_identity
+                  -n namespace -s signature_file [-r krl_file] [-O option]
+```
+
+Список поддерживаемых алгоритмов генерации ключей можно получить следующей командой:
+
+```bash
+ssh -Q key
+```
+
+Пример вывода:
+
+```bash
+$ ssh -Q key
+ssh-ed25519
+ssh-ed25519-cert-v01@openssh.com
+sk-ssh-ed25519@openssh.com
+sk-ssh-ed25519-cert-v01@openssh.com
+ssh-rsa
+ssh-dss
+ecdsa-sha2-nistp256
+ecdsa-sha2-nistp384
+ecdsa-sha2-nistp521
+sk-ecdsa-sha2-nistp256@openssh.com
+ssh-rsa-cert-v01@openssh.com
+ssh-dss-cert-v01@openssh.com
+ecdsa-sha2-nistp256-cert-v01@openssh.com
+ecdsa-sha2-nistp384-cert-v01@openssh.com
+ecdsa-sha2-nistp521-cert-v01@openssh.com
+sk-ecdsa-sha2-nistp256-cert-v01@openssh.com
+```
+
+> С выходом OpenSSH версии 8.2 алгоритм цифровой подписи SHA-1 для ключей `ssh-rsa` признан небезопасным, и ключи с такой подписью будут отвергаться SSH-сервером. Подробнее [здесь](https://www.openssh.com/txt/release-8.2) и на [StackExchange](https://security.stackexchange.com/questions/226131/openssh-declares-ssh-rsa-deprecated-what-do-i-do-next). При этом генерация RSA ключей с подписью SHA-2 вполне валидна (rsa-sha2-256/512).
+> 
+> В случае использования RSA ключей рекомендуется устанавливать длину ключа при его генерации равной $2048$ бит. Ключи длиной $<1024$ бит [потенциально небезопасны](https://crypto.stackexchange.com/a/1982) в смысле взломостойкости. С увеличением длины ключа взломостойкость растет, как и накладные расходы для шифрования и дешифрования.
+
+Список поддерживаемых алгоритмов обмена ключами (`key exchange algorithm`, он же `kex algorithm`) можно получить следующей командой:
+
+```bash
+ssh -Q kex
+```
+
+Пример вывода:
+
+```bash
+$ ssh -Q kex
+diffie-hellman-group1-sha1
+diffie-hellman-group14-sha1
+diffie-hellman-group14-sha256
+diffie-hellman-group16-sha512
+diffie-hellman-group18-sha512
+diffie-hellman-group-exchange-sha1
+diffie-hellman-group-exchange-sha256
+ecdh-sha2-nistp256
+ecdh-sha2-nistp384
+ecdh-sha2-nistp521
+curve25519-sha256
+curve25519-sha256@libssh.org
+sntrup761x25519-sha512@openssh.com
+```
+
+Можно использовать следующий bash скрипт для вывода всей информации об установленном SSH сервере в консоль:
+
+```bash
+for F in $(ssh -Q help); do 
+  printf "=== $F ===\n"
+  ssh -Q $F
+  echo ""
+done
+```
+
+Или в файл:
+
+```bash
+#!/usr/bin/env bash
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+rm $SCRIPT_DIR/ssh_info.txt;
+for F in $(ssh -Q help); do 
+  cat <<EOF >> $SCRIPT_DIR/ssh_info.txt;
+=== $F ==="
+$(ssh -Q $F);
+
+EOF
+done
+```
+
+Полный вывод: [файл](data/ssh_info.txt).
+
+#### Генерация ключей
+
+Для формирования пары ключей используется утилита `ssh-keygen`. По умолчанию она создаёт ключи формата `rsa`. На данный момент рекомендуется использовать ключи формата `ed25519`. Они более компактные и обеспечивают достаточный уровень защищённости:
+- [SSH Key Algorithms: RSA vs ECDSA vs Ed25519](https://vulnerx.com/ssh-key-algorithms/)
+- [SSH Key: Ed25519 vs RSA](https://security.stackexchange.com/questions/90077/ssh-key-ed25519-vs-rsa)
+- [SSH keys: ed25519 vs RSA performance demystified](https://serverfault.com/a/1081277)
+- [Is it bad that my ed25519 key is so short compared to a RSA key?](https://security.stackexchange.com/a/101045)
+- [Ключи для SSH: ED25519 vs RSA](https://www.linux.org.ru/forum/general/16860562)
+
+> Протестировать скорость генерации и верификации различных ключей можно с использованием [следующей команды](https://serverfault.com/a/1081277):
+> ```bash
+> openssl speed rsa1024 rsa2048 rsa4096 ecdsap256 ed25519
+> ```
+> Пример вывода:
+> ```bash
+>                               sign    verify    sign/s  verify/s
+> rsa 1024 bits              0.000109s 0.000007s   9213.7 141987.6
+> rsa 2048 bits              0.000526s 0.000023s   1902.3  42704.8
+> rsa 4096 bits              0.005714s 0.000087s    175.0  11517.2
+> 256 bits ecdsa (nistp256)  0.0000s   0.0001s    39504.5  12626.9
+> 253 bits EdDSA (Ed25519)   0.0000s   0.0001s    23596.9   9114.5
+> ```
+ 
+> Алгоритм генерации ключа и алгоритм шифрования трафика в SSH туннеле не одно и то же! См. `ssh -Q cipher`.
+
+Генерация ключа по умолчанию без параметров:
+
+```bash
+$ ssh-keygen
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/ud/.ssh/id_rsa):
+# При нажатии Enter используется путь и имя по умолчанию
+Enter passphrase (empty for no passphrase):
+# Можно запаролить ключ, тогда при аутентификации по ключу необходимо будет ввести еще и пароль
+Enter same passphrase again:
+# Повторный ввод пароля
+Your identification has been saved in /home/ud/.ssh/id_rsa
+Your public key has been saved in /home/ud/.ssh/id_rsa.pub
+The key fingerprint is:
+SHA256:4ZFo22kSiZjqTCJFEtTrgTM44pSiW6kc+Xp3mZqRVAI ud@udupc
+The key's randomart image is:
++---[RSA 3072]----+
+|+ooE             |
+| o +.. o .       |
+|. * o.=.+        |
+|=O o .o= +       |
+|Xo=...o S        |
+|B+o.. .o         |
+|.*o  o  o        |
+|o. o .o+         |
+| .o .oo          |
++----[SHA256]-----+
+```
+
+Генерация `RSA` ключа без использования интерактивного ввода (пустой пароль):
+
+```bash
+ssh-keygen -b 4096 -t rsa -f ~/.ssh/id_rsa_test -q -N ""
+```
+
+Генерация `ED25519` ключа без использования интерактивного ввода (пустой пароль):
+
+```bash
+ssh-keygen -t ed25519 -C me@gmail.com -f ~/.ssh/id_ed25519_test -q -N ""
+```
+
+> `-C` используется для записи комментария в публичный ключ с целью упрощения процесса сопровождения ключей, когда их много. Это может быть любая информация (назначение, имя хоста, id юзера). Часто в это поле записывают электронный адрес почты, чтобы различать пользователей, соединяющихся с сервером.
+
+#### Просмотр информации о ключах
+
+Публичный ключ:
+
+```bash
+ssh-keygen -lf ~/.ssh/id_ed25519_test.pub
+```
+
+Пример вывода (ключ `-l` выводит цифровой отпечаток - хэш ключа):
+
+```bash
+$ ssh-keygen -lf ~/.ssh/id_ed25519_test.pub
+256 SHA256:vPOSokFEn0NE0Iii+cin23Ka6vASU46kGbXd0Qpg/2g me@gmail.com (ED25519)
+```
+
+`cat` просто выведет содержимое ключа в текстовом виде:
+
+```bash
+cat ~/.ssh/id_ed25519_test.pub
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAFT2Q75/bUcDKvxcituNxg7D0l1Vjn7oKPleuzwXXbL me@gmail.com
+```
+
+`cat` для приватного ключа:
+
+```bash
+cat ~/.ssh/id_ed25519_test
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACABU9kO+f21HAyr8XIrbjcYOw9JdVY5+6Cj5Xrs8F12ywAAAJDXtDQN17Q0
+DQAAAAtzc2gtZWQyNTUxOQAAACABU9kO+f21HAyr8XIrbjcYOw9JdVY5+6Cj5Xrs8F12yw
+AAAEDxUG5NMEa4elb59N62EUBsL4OBxkx5S6BEvvM7/CEw5gFT2Q75/bUcDKvxcituNxg7
+D0l1Vjn7oKPleuzwXXbLAAAADG1lQGdtYWlsLmNvbQE=
+-----END OPENSSH PRIVATE KEY-----
+```
+
+Существуют [различные кодировки](https://www.ssl.com/guide/pem-der-crt-and-cer-x-509-encodings-and-conversions/) для ключей и сертификатов.
+
+### 0.6 Настройка сервера и клиента
+
+Рассмотрим настройку SSH на сервере и клиенте. Для сервера отключим возможность аутентификации с использованием пароля учетной записи, оставим возможность доступа только по SSH ключу. 
+
+#### Настройка сервера
+
+##### Шаг 1
+
+Допустим, сервер в плане доступа через SSH настроен по умолчанию, т.е. допускается аутентификация с использованием пароля. Пусть имя юзера `alex`, имя хоста сервера `al-srv`. Проверим соединение командой `ssh <имя юзера>@<имя или IP хоста>`:
+
+```bash
+ssh alex@al-srv
+```
+
+Необходимо ввести пароль. Если успех, переходим к следующему шагу.
+
+##### Шаг 2
+
+Сгенерированный публичный ключ необходимо добавить на сервер. Для этого в домашней директории пользователя на сервере необходимо создать папку `.ssh` и установить права доступа к папке (`chmod`):
+
+```bash
+mkdir /home/alex/.ssh/
+chmod 700 /home/ud/.ssh/
+```
+
+Публичный ключ с хоста клиента на сервер можно скопировать с помощью команды:
+
+```bash
+ssh-copy-id user@host
+```
+
+Если имеется несколько пар ключей, то можно указать какой конкретно ключ необходимо использовать:
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519 user@host
+```
+
+Или скопировать через SFTP/SCP вручную.
+
+Далее необходимо создать файл `~/.ssh/authorized_keys` и установить права доступа к нему:
+
+```bash
+cat /home/alex/.ssh/id_ed25519_alex.pub >> /home/alex/.ssh/authorized_keys
+chmod 600 /home/alex/.ssh/authorized_keys
+```
+
+Если данные манпуляции выполняются из-под другой учетной записи (не `alex`), то нужно изменить владельца всей папки `.ssh`:
+
+```bash
+chown -R alex:alex /home/alex/.ssh/
+```
+
+##### Шаг 3
+
+Далее необходимо отключить доступ по паролю на сервере. Отредактируем конфиг `sshd_config`.
+
+> Изменение конфига, перезапуск службы `sshd` и прочие манипуляции по изменению параметров SSH не влияют на текущую SSH сессию. Прежде чем ее прерывать, следует убедиться, что все настроено правильно (осуществить проверку подключения через другую сессию). Иначе удаленный доступ к серверу будет потерян, придется перенастраивать SSH уже с непосредственным физическим доступом к нему.
+
+Редактируем `sshd_config`:
+
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+Содержимое:
+```nano
+Port 2222
+PermitRootLogin no
+PubkeyAuthentication yes
+AuthorizedKeysFile /home/alex/.ssh/authorized_keys
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+UsePAM no
+```
+
+Сохраняем изменения `Ctrl-O` и выходим `Ctrl-X`:
 
 <div align="center">
-  <img src="images/docker_exchange_schema.svg" width="1000" title="Docker exchange schema"/>
-  <p style="text-align: center">
-    Рисунок 2 &ndash; Взаимодействие с Docker
-  </p>
+  <br>
+  <img src="images/nano_sshd.png" width="800" title="nano"/>
+    <p style="text-align: center">
+        Рисунок 10 &ndash; Редактор nano
+    </p>
 </div>
 
-#### Подсказки перед практикой
+- `Port 2222`  
+  Номер SSH порта рекомендуется изменить на любой нестандартный (стандартный &ndash; $22$).
+- `PermitRootLogin no`  
+  Запрет на подключение через SSH для учетной записи `root`.
+  > С целью увеличения безопасности рекомендуется установить запрет на подключение через SSH учетной записи `root`, дабы не предоставлять `root`-доступ к серверу напрямую.
+- `PubkeyAuthentication yes`  
+  Включение режима аутентификации с использованием публичного ключа.
+- `AuthorizedKeysFile /home/alex/.ssh/authorized_keys`  
+  Путь к файлу `authorized_keys`.
+- `PasswordAuthentication no`  
+  Запрет режима доступа по паролю.
+- `KbdInteractiveAuthentication no`  
+  Запрет интерактивного ввода с использованием клавиатуры.
+- `UsePAM no`
+  > C PAM разобраться сложнее, ежели интересно, можно начать отсюда:
+  > - [PasswordAuthentication yes или UsePAM yes](https://www.linux.org.ru/forum/admin/14884566)
+  > - [Непонятное в SSH](https://www.linux.org.ru/forum/admin/12826308)
 
-На практике при работе с контейнерами могут быть полезны следующие советы:
-- Простейший сценарий &ndash; скачать образ, создать контейнер и запустить его (выполнить команду внутри запущенного контейнера).
-- Документацию по запуску контейнера (путь к образу и необходимые команды с ключами) как правило можно найти в реестре образов (например, у `Docker Hub` есть очень удобный поисковик) или в `ReadMe` репозитория с исходным кодом проекта.
-  > Создать образ и сохранить его в публичный реестр может практически каждый, поэтому старайтесь пользоваться только официальной документацией и проверенными образами!
-- Для скачивания образов используется команда `pull`, однако в целом она необязательна &ndash; при выполнении большинства команд (`create`, `run` и др.) образ скачается автоматически, если не будет обнаружен локально.
-- При выполнении команд `pull`, `create`, `run` и др. следует указывать репозиторий и тег образа. Если этого не делать, то будут использоваться значения по умолчанию &ndash; репозиторий как правило `docker.io`, а тег `latest`.
-- При запуске контейнера выполняется команда по умолчанию (точка входа), однако можно выполнить и другую команду.
+> Порт на сервере необходимо открыть. Если в ОС установлен файерволл, необходимо разрешить подключение через выбранный порт, например, с использованием `UFW` в Убунте:
+> ```bash
+> sudo ufw allow 2222
+> ```
+> UFW (Uncomplicated Firewall) — удобный интерфейс для управления политиками безопасности межсетевого экрана.
 
-### 1.3 Работа с Docker
-
-Docker &ndash; это открытая платформа для разработки, доставки и запуска приложений. Состоит из утилиты командной строки `docker`, которая вызывает одноименный сервис (сервис является потенциальной единой точкой отказа) и требует права доступа `root`. По умолчанию использует в качестве `Container Runtime` `runc`. Все файлы Docker (образы, контейнеры и др.) по умолчанию хранятся в каталоге `/var/lib/docker`.
-
-Для установки необходимо воспользоваться официальным руководством &ndash; [Download and install Docker](https://docs.docker.com/get-started/#download-and-install-docker), которое содержит подробные инструкции для Linux, Windows и Mac. Стоит сразу отметить, что контейнерам для работы необходимы функции ядра Linux, поэтому они работают нативно под Linux, почти нативно в последних версиях Windows благодаря WSL2 (через `Docker Desktop` или Linux дистрибутив) и не нативно под Mac (используется виртуализация). Рекомендуется использовать в тестовой и особенно в промышленной эксплуатации только Linux.
-
-#### Краткий гайд по установке Docker на Ubuntu
-
-Удаляем старые версии:
-
-```bash
-sudo apt remove docker docker-engine docker.io containerd runc
-```
-
-Добавляем репозиторий:
-
-```bash
-sudo apt update
-sudo apt install ca-certificates curl gnupg lsb-release
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-```
-
-Устанавливаем `Docker Engine`:
+Перезапускаем службу:
 
 ```bash
-sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+systemctl reload sshd.service
 ```
 
-Проверяем работоспособность с использованием образа `hello-world`:
+#### Настройка клиента
+
+##### Linux
+
+В домашней директории пользователя необходимо создать папку `.ssh` и поместить в нее пару ключей:
 
 ```bash
-sudo docker run hello-world
+mkdir /home/alex/.ssh/
+chmod 700 /home/ud/.ssh/
+chown -R alex:alex /home/alex/.ssh/
 ```
 
-Запуск докера без запроса прав рута:
-- создаем группу пользователей `docker`
-- добавляем себя в эту группу
-- устанавливаем владельца файла `.docker` в папке юзера
-- устанавливаем права доступа файлу `.docker`
+При этом у приватного ключа права доступа должны иметь значение $600$ или `-rw-------`, у публичного ключа &ndash; $644$ или `-rw-r--r--`.
+
+> Для просмотра прав доступа к файлу можно воспользоваться утилитой `ls` для отображения прав доступа в human readable формате или `stat` для вывода в восьмеричном виде (octal notation):
+> ```bash
+> ls -l ~/.ssh/id_rsa_gitlab.pub
+> stat -c "%a %n" ~/.ssh/id_rsa_gitlab.pub
+> ```
+
+##### Windows
+
+В домашней директории пользователя необходимо создать папку `.ssh` и поместить в нее пару ключей.
+
+#### Проверка соединения
+
+Например, имеются следующие данные для SSH соединения:
+- Имя хоста: `relay-server.net`
+- Имя учетной записи: `ruser`
+- Порт для SSH: `7777`
+- Имя приватного ключа: `id_ed25519_ruser`
+
+Тогда команда для подключения будет выглядеть следующим образом:
+
+```commandline
+ssh -p 7777 ruser@relay-server -i C:\Users\UD\.ssh\id_ed25519_ruser
+```
+
+Если все прошло успешно, то в SSH клиенте мы увидим консоль (терминал) сервера:
+
+<div align="center">
+  <br>
+  <img src="images/SSH_success.png" width="800" title="SSH OK"/>
+    <p style="text-align: center">
+        Рисунок 11 &ndash; Успешное соединение через SSH
+    </p>
+</div>
+
+Если неуспех, то необходимо провести отладку.
+
+> При первом подключении к неизвестному хосту клиент выведет сообщение с хешем публичного ключа:
+> 
+> <div align="center">
+>  <br>
+>  <img src="images/Host_key_fingerprint_Tabby.png" width="800" title="SSH fingerprint"/>
+>    <p style="text-align: center">
+>        Рисунок 12 &ndash; Первое подключение к неизвестному хосту
+>    </p>
+> </div>
+
+#### Отладка на стороне клиента
+
+Самой распространенной причиной возникновения ошибки при соединении с сервером через SSH являются разрешения (права доступа). Необходимо проверить владельца папки `.ssh`, установленные права для публичного и приватного ключей. Пример ошибки:
+
+<div align="center">
+  <br>
+  <img src="images/Bad_permissions_1.png" width="800" title="SSH bad permissions 1"/>
+    <p style="text-align: center">
+        Рисунок 13 &ndash; Ошибка при подключении через SSH с использованием ключей
+    </p>
+</div>
+
+В данном случае причина ошибки очевидна: `Bad permissions`, `Permissions for 'C:\\Users\\UD\\.ssh\\id_ed25519_pc340_ruser' are too open. It is required that your private key files are NOT accessible by others.`
+
+Данный ключ был создан на сервере под Убунтой, в атрибутах в списке владельцев на стороне клиента (Windows) присутствует неизвестная учетная запись. Подсказано решение: убрать учетную запись `UNKNOWN\\UNKNOWN (S-1-5-21-298041677-3583488911-3265851412-1001)` из списка владельцев. Для этого в свойствах файла (приватный ключ в данном случае) на вкладке `Безопасность` нужно нажать на кнопку `Дополнительно`:
+
+<div align="center">
+  <br>
+  <img src="images/Bad_permissions_2.png" width="767" title="SSH bad permissions 2"/>
+    <p style="text-align: center">
+        Рисунок 14 &ndash; Дополнительные параметры безопасности
+    </p>
+</div>
+
+В открывшемся окне необходимо удалить неизвестную учетную запись. Если нажать удалить, то выскочет сообщение об ошибке:
+
+<div align="center">
+  <br>
+  <img src="images/Bad_permissions_3.png" width="406" title="SSH bad permissions 3"/>
+    <p style="text-align: center">
+        Рисунок 15 &ndash; Дополнительные параметры безопасности
+    </p>
+</div>
+
+Сначала необходимо отключить наследование с преобразованием унаследованных разрешений в явные:
+
+<div align="center">
+  <br>
+  <img src="images/Bad_permissions_4.png" width="542" title="SSH bad permissions 4"/>
+    <p style="text-align: center">
+        Рисунок 16 &ndash; Дополнительные параметры безопасности
+    </p>
+</div>
+
+И затем удалить неизвестную учетную запись. После нажать `Применить` и/или `OK`. Повторно осуществить попытку подключения:
+
+<div align="center">
+  <br>
+  <img src="images/Bad_permissions_5.png" width="800" title="SSH bad permissions 5"/>
+    <p style="text-align: center">
+        Рисунок 17 &ndash; Дополнительные параметры безопасности
+    </p>
+</div>
+
+> Если ошибка неочевидная, можно вывести отладочную информацию при подключении с использованием флага `-v` (`verbose`; `-vv` &ndash; второй уровень, `-vvv` &ndash; третий и т.д.):
+> ```bash
+> ssh -v -p 7777 ruser@relay_server.net -i C:\Users\UD\.ssh\id_ed25519_pc340_ruser
+> ```
+
+Пример:
+
+<div align="center">
+  <br>
+  <img src="images/SSH_debug_1.png" width="800" title="SSH debug 1"/>
+    <p style="text-align: center">
+        Рисунок 18 &ndash; Отладка SSH подключения на клиенте
+    </p>
+</div>
+
+#### Отладка на стороне сервера
+
+Для отладки SSH на стороне сервера необходимо включить вывод отладочной информации `sshd` в логи. Для этого в `sshd_config` необходимо раскомментировать или добавить следующие строки:
+
+```nano
+#SyslogFacility AUTH
+#LogLevel INFO
+```
+
+При этом в `LogLevel` прописать значение `DEBUG3` (3 &ndash; уровень дебага). Сохранить конфиг и перезапустить службу.
+
+Для просмотра системных сообщений в журнале необходимо воспользоваться утилитой `journalctl`:
 
 ```bash
-sudo groupadd docker
-sudo usermod -aG docker $USER
-sudo chown "$USER":"$USER" /home/"$USER"/.docker -R
-sudo chmod g+rwx "$HOME/.docker" -R
+journalctl -n 100 --no-pager -xu ssh
 ```
 
-Необходимо разлогиниться и залогиниться обратно. Проверка:
+Данная команда выведет последние 100 записей, связанных с ssh.
+
+Пример вывода:
 
 ```bash
-docker run hello-world
+сен 28 00:37:26 udupc sshd[2234841]: Failed password for invalid user admin from 92.255.85.253 port 44051 ssh2
+сен 28 00:37:27 udupc sshd[2234841]: Connection reset by invalid user admin 92.255.85.253 port 44051 [preauth]
+сен 28 00:45:18 udupc sshd[2239642]: error: kex_protocol_error: type 20 seq 2 [preauth]
+сен 28 00:45:18 udupc sshd[2239642]: error: kex_protocol_error: type 30 seq 3 [preauth]
+сен 28 00:45:19 udupc sshd[2239642]: error: kex_protocol_error: type 20 seq 4 [preauth]
+сен 28 00:45:19 udupc sshd[2239642]: error: kex_protocol_error: type 30 seq 5 [preauth]
+сен 28 00:45:21 udupc sshd[2239642]: error: kex_protocol_error: type 20 seq 6 [preauth]
+сен 28 00:45:21 udupc sshd[2239642]: error: kex_protocol_error: type 30 seq 7 [preauth]
+сен 28 00:45:49 udupc sshd[2239642]: Connection reset by 139.59.36.72 port 6116 [preauth]
+сен 28 00:47:07 udupc sshd[2240739]: Invalid user reboot from 185.234.216.97 port 11356
+сен 28 00:47:07 udupc sshd[2240739]: pam_unix(sshd:auth): check pass; user unknown
+сен 28 00:47:07 udupc sshd[2240739]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=185.234.216.97
+сен 28 00:47:09 udupc sshd[2240739]: Failed password for invalid user reboot from 185.234.216.97 port 11356 ssh2
+сен 28 00:47:09 udupc sshd[2240739]: Received disconnect from 185.234.216.97 port 11356:11: Client disconnecting normally [preauth]
+сен 28 00:47:09 udupc sshd[2240739]: Disconnected from invalid user reboot 185.234.216.97 port 11356 [preauth]
 ```
 
-#### Основные команды
+> В тестовом режиме данная машина через службу DDNS была доступна извне, по логу видно, что авторизоваться пытались с учетными записями `admin`, `reboot` и др.
 
-Справочная информация:
-- Список доступных команд
-  ```bash
-  docker --help
-  ```
-- Информация по команде
-  ```bash
-  docker <command> --help
-  ```
-- Версия Docker
-  ```bash
-  docker --version
-  ```
-- Общая информация о системе
-  ```bash
-  docker info
-  ```
- 
-#### Работа с образами
-
-- Поиск образов по ключевому слову `debian`
-  ```bash
-  docker search debian
-  ```
-- Скачивание последней версии (тег по умолчанию `latest`) официального образа `ubuntu` (издатель не указывается) из репозитория по умолчанию `docker.io/library`
-  ```bash
-  docker pull ubuntu
-  ```
-- Скачивание последней версии (`latest`) образа `prometheus` от издателя `prom` из репозитория `docker.io/prom`
-  ```bash
-  docker pull prom/prometheus
-  ```
-- Скачивание из репозитория `docker.io` официального образа `ubuntu` с тегом `18.04`
-  ```bash
-  docker pull docker.io/library/ubuntu:18.04
-  ```
-- Просмотр локальных образов
-  ```bash
-  docker images
-  ```
-- Удаление образа
-  ```bash
-  docker rmi image_name:tag
-  ```
-  > Вместо `image_name:tag` можно указать `image_id`. Для удаления образа все контейнеры на его основе должны быть как минимум остановлены.
-- Удаление всех образов
-  ```bash
-  docker rmi $(docker images -aq)
-  ```
- 
-#### Работа с контейнерами
-
-- Запуск `Hello, world!` в мире контейнеров
-  ```bash
-  docker run hello-world
-  ```
-- Запуск контейнера `ubuntu` и выполнение команды `bash` в интерактивном режиме
-  ```bash
-  docker run -it ubuntu bash
-  ```
-- Запуск контейнера `getting-started` с отображением (маппингом) порта $8080$ хоста на порт $80$ внутрь контейнера
-  ```bash
-  docker run --name docker-getting-started --publish 8080:80 docker/getting-started
-  ```
-- Запуск контейнера `mongodb` с именем `mongodb` в фоновом режиме
-  ```bash
-  docker run --detach --name mongodb docker.io/library/mongo:4.4.10
-  ```
-  > Данные будут удалены при удалении контейнера!
-- Просмотр запущенных контейнеров
-  ```bash
-  docker ps
-  ```
-- Просмотр всех контейнеров (в том числе остановленных)
-  ```bash
-  docker ps -a
-  ```
-- Просмотр статистики
-  ```bash
-  docker stats --no-stream
-  ```
-- Создание контейнера из образа alpine
-  ```bash
-  docker start alpine
-  ```
-- Запуск созданного контейнера
-  ```bash
-  docker start container_name
-  ```
-  > Вместо `container_name` можно указать `container_id`
-- Запуск всех созданных контейнеров
-  ```bash
-  docker start $(docker ps -a -q)
-  ```
-- Остановка контейнера
-  ```bash
-  docker stop container_name
-  ```
-  > Вместо `container_name` можно указать `container_id`.
-- Остановка всех контейнеров
-  ```bash
-  docker stop $(docker ps -a -q)
-  ```
-- Удаление контейнера
-  ```bash
-  docker rm container_name
-  ```
-  > Вместо <container_name> можно указать `container_id`.
-- Удаление всех контейнеров
-  ```bash
-  docker rm $(docker ps -a -q)
-  ```
- 
-#### Информация о системе
-
-- Общая информация о системе (соответствует `docker info`)
-  ```bash
-  docker system info
-  ```
-- Занятое место на диске
-  ```bash
-  docker system df
-  ```
-- Удаление неиспользуемых данных и очистка диска
-  ```bash
-  docker system prune -af
-  ```
-
-### 1.4 Хранение данных
-
-При запуске контейнер получает доступ на чтение ко всем слоям образа, а также создает свой исполняемый слой с возможностью создавать, обновлять и удалять файлы. Все эти изменения не будут видны для файловой системы хоста и других контейнеров, даже если они используют тот же базовый образ. При удалении контейнера все измененные данные так же будут удалены. В большинстве случаев это предпочтительное поведение, однако иногда данные необходимо расшарить между несколькими контейнерами или просто сохранить.
-
-Рассмотрим два способа хранения данных контейнеров:
- - [named volumes](https://docs.docker.com/get-started/05_persisting_data/) &ndash; именованные тома хранения данных.  
-   Позволяет сохранять данные в именованный том, который располагается в каталоге `/var/lib/docker/volumes` и не удаляется при удалении контейнера. Том может быть подключен к нескольким контейнерам.
- - [bind mount](https://docs.docker.com/get-started/06_bind_mounts/) &ndash; монтирование каталога с хоста.  
-   Позволяет монтировать файл или каталог с хоста в контейнер. На практике используется для проброса конфигурационных файлов или каталога БД внутрь контейнера (БД живет в файловой системе хоста).
-
-Справочная информация об использовании `command`:
+Так выглядит пример журнала с включенным дебагом SSH соединения на сервере:
 
 ```bash
-docker command --help
+Sep 27 20:57:14 vm860617 sshd[917749]: debug3: fd 7 is O_NONBLOCK
+Sep 27 20:57:14 vm860617 sshd[917749]: debug3: send packet: type 99
+Sep 27 20:57:14 vm860617 sshd[917779]: debug1: Setting controlling tty using TIOCSCTTY.
+Sep 27 20:57:14 vm860617 sshd[917779]: debug3: Normalising mapped IPv4 in IPv6 address
+Sep 27 20:57:14 vm860617 sshd[917749]: debug3: receive packet: type 98
+Sep 27 20:57:14 vm860617 sshd[917749]: debug1: server_input_channel_req: channel 1 request window-change reply 0
+Sep 27 20:57:14 vm860617 sshd[917749]: debug1: session_by_channel: session 1 channel 1
+Sep 27 20:57:14 vm860617 sshd[917749]: debug1: session_input_channel_req: session 1 req window-change
+Sep 27 20:57:15 vm860617 sshd[917749]: debug3: receive packet: type 98
+Sep 27 20:57:15 vm860617 sshd[917749]: debug1: server_input_channel_req: channel 1 request window-change reply 0
+Sep 27 20:57:15 vm860617 sshd[917749]: debug1: session_by_channel: session 1 channel 1
+Sep 27 20:57:15 vm860617 sshd[917749]: debug1: session_input_channel_req: session 1 req window-change
+Sep 27 20:57:19 vm860617 sshd[917749]: debug3: receive packet: type 80
+Sep 27 20:57:19 vm860617 sshd[917749]: debug1: server_input_global_request: rtype keepalive@openssh.com want_reply 1
+Sep 27 20:57:19 vm860617 sshd[917749]: debug3: send packet: type 82
+Sep 27 20:57:24 vm860617 sshd[917749]: debug3: receive packet: type 80
+Sep 27 20:57:24 vm860617 sshd[917749]: debug1: server_input_global_request: rtype keepalive@openssh.com want_reply 1
+Sep 27 20:57:24 vm860617 sshd[917749]: debug3: send packet: type 82
 ```
 
-#### Пример использования `named volume`
+По сообщениям в журнале можно понять, на каком этапе возникает "неуспех" и отладить.
 
-- Запуск контейнера `jenkins` с подключением каталога `/var/jenkins_home` как тома `jenkins_home`
-  ```bash
-  docker run --detach --name jenkins --publish 80:8080 --volume=jenkins_home:/var/jenkins_home/ jenkins/jenkins:lts-jdk11
-  ```
-- Просмотр томов
-  ```bash
-  docker volume ls
-  ```
-- Удаление неиспользуемых томов и очистка диска
-  ```bash
-  docker volume prune
-  ```
-  > Для удаления тома все контейнеры, в которых он подключен, должны быть остановлены и удалены.
+### 0.7 Настройка файервола UFW
 
-#### Пример использования `bind mount`
+Источник: [Настройка фаервола в Ubuntu с помощью утилиты UFW](https://selectel.ru/blog/tutorials/how-to-configure-firewall-with-ufw-on-ubuntu-20/)
 
-- Запуск контейнера `node-exporter` с монтированием каталогов внутрь контейнера в режиме `read only`: `/proc` хоста прокидывается в `/host/proc:ro` внутрь контейнера, `/sys` &ndash; в `/host/sys:ro`, а `/` &ndash; в `/rootfs:ro`
-  ```bash
-  docker run \
-  -p 9100:9100 \
-  -v "/proc:/host/proc:ro" \
-  -v "/sys:/host/sys:ro" \
-  -v "/:/rootfs:ro" \
-  --name node-exporter prom/node-exporter:v1.1.2
-  ```
-
-Подробнее: [Хранение данных в Docker](https://habr.com/ru/company/southbridge/blog/534334/)
-
-### 1.5 Создание образа с использованием Dockerfile
-
-Создание и распространение образов &ndash; одна из основных задач Docker. Рассмотрим два способа создания образа:
- - commit изменений из контейнера.  
-   Необходимо запустить контейнер из базового образа в интерактивном режиме, внести изменения и сохранить результат в образ с помощью команды `commit`. На практике способ удобен для небольших быстрых доработок.
- - декларативное описание через `Dockerfile`.  
-   Основной способ создания образов. Необходимо создать файл `Dockerfile` с декларативным описанием в формате `yaml` через текстовый редактор и запустить сборку образа командой `build`.
-
-#### Пример с использованием `commit`
-
-- Запуск контейнера из образа `ubuntu` в интерактивном режиме, установка утилиты `ping` и коммит образа под именем `ubuntu-ping:20.04`
-  ```bash
-  docker run -it --name ubuntu-ping ubuntu:20.04 bash
-  apt update && apt install -y iputils-ping
-  exit
-  docker commit ubuntu-ping ubuntu-ping:20.04
-  docker images
-  ```
-
-#### Пример с использованием `Dockerfile`
-
-Содержимое `Dockerfile`:
-
-```dockerfile
-# Dockerfile
-FROM ubuntu:20.04
-RUN apt update && apt install -y iputils-ping
-```
-
-Запуск команды `build` из каталога с `Dockerfile` для создания образа `ubuntu-ping:20.04`:
+Установка:
 
 ```bash
-docker build -t ubuntu-ping:20.04 .
-docker images
+sudo apt install ufw
 ```
 
-Создание из локального образа `ubuntu-ping:20.04` тега с репозиторием для издателя `alex`:
+Проверка состояния UFW с помощью команды:
 
 ```bash
-# tag, login, push
-docker tag ubuntu-ping:20.04 alex/ubuntu-ping:20.04 # 
-docker images
+sudo ufw status verbose
 ```
 
-Вход в репозиторий `docker.io` под пользователем `alex`, и публикование образа:
+По умолчанию UFW отключен, так что вы должны увидеть что-то вроде этого:
+```bash
+Status: inactive
+```
+
+Пример с включенным UFW:
 
 ```bash
-docker login -u alex docker.io
-docker push alex/ubuntu-ping:20.04
+ud@udupc:~$ sudo ufw status verbose
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+22/tcp (OpenSSH)           ALLOW IN    Anywhere                  
+9000/tcp                   ALLOW IN    Anywhere                  
+80/tcp (Nginx HTTP)        ALLOW IN    Anywhere                  
+443                        ALLOW IN    Anywhere                  
+22/tcp (OpenSSH (v6))      ALLOW IN    Anywhere (v6)             
+9000/tcp (v6)              ALLOW IN    Anywhere (v6)             
+80/tcp (Nginx HTTP (v6))   ALLOW IN    Anywhere (v6)             
+443 (v6)                   ALLOW IN    Anywhere (v6
 ```
 
-### 1.6 Синтаксис докер-файла
+#### Начальная настройка
+
+По умолчанию настройки UFW запрещают все входящие соединения и разрешают все исходящие. Это значит, что если кто-то попытается подключиться к серверу, он не сможет этого сделать, в то время как любое приложение на сервере имеет доступ к внешним соединениям.
+
+Соответствующие правила фаервола прописываются так:
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+```
+
+##### SSH
+
+Чтобы разрешить входящие SSH-соединения, необходимо выполнить команду:
+
+```bash
+sudo ufw allow ssh
+```
+
+SSH демон по умолчанию прослушивает $22$ порт. UFW знает об именах распространенных служб (ssh, sftp, http, https), поэтому можно использовать их вместо номера порта.
+
+Если SSH-демон использует другой порт, то необходимо указать его в явном виде, например:
+
+```bash
+sudo ufw allow 2222
+```
+
+#### Запуск UFW
+
+Чтобы включить UFW, необходимо выполнить следующую команду:
+
+```bash
+sudo ufw enable
+```
+
+Появится похожее предупреждение:
+
+```bash
+Command may disrupt existing ssh connections. Proceed with operation (y|n)?
+```
+
+Это означает, что запуск этого сервиса может разорвать текущее SSH соединение.
+
+#### Добавление диапазонов портов
+
+```bash
+sudo ufw allow 3000:3100
+```
+
+Также можно указать конкретный протокол:
+
+```bash
+sudo ufw allow 3000:3100/tcp
+sudo ufw allow 3000:3100/udp
+```
+
+#### Добавление IP-адресов
+
+Можно указать IP-адрес, которому будет разрешен доступ ко всем портам сервера:
+
+```bash
+sudo ufw allow from 123.45.67.89
+```
+
+Или к конкретному порту:
+
+```bash
+sudo ufw allow from 123.45.67.89 to any port 22
+```
+
+Аналогичным образом можно добавить правила для диапазонов IP-адресов:
+
+```bash
+sudo ufw allow from 123.45.67.89/24
+sudo ufw allow from 123.45.67.89/24 to any port 22
+```
+
+#### Ограничение подключений
+
+Команды аналогичны разрешающим правилам:
+
+```bash
+sudo ufw deny http
+sudo ufw deny from 123.45.67.89
+```
+
+#### Удаление правил
+
+Существует два способа удаления правил:
+- По номеру правила
+- По фактическому правилу
+
+Для вывода пронумерованных правил необходимо выполнить команду:
+
+```bash
+sudo ufw status numbered
+```
+
+Пример вывода:
+
+```bash
+$ sudo ufw status numbered
+[sudo] password for ud: 
+Sorry, try again.
+[sudo] password for ud: 
+Status: active
+
+     To                         Action      From
+     --                         ------      ----
+[ 1] OpenSSH                    ALLOW IN    Anywhere                  
+[ 2] 9000/tcp                   ALLOW IN    Anywhere                  
+[ 3] Nginx HTTP                 ALLOW IN    Anywhere                  
+[ 4] 443                        ALLOW IN    Anywhere                  
+[ 5] OpenSSH (v6)               ALLOW IN    Anywhere (v6)             
+[ 6] 9000/tcp (v6)              ALLOW IN    Anywhere (v6)             
+[ 7] Nginx HTTP (v6)            ALLOW IN    Anywhere (v6)             
+[ 8] 443 (v6)                   ALLOW IN    Anywhere (v6
+```
+
+Пример удаления по номеру:
+
+```bash
+sudo ufw delete 2
+```
+
+Пример удаления по фактическому правилу:
+
+```bash
+sudo ufw delete allow 80
+```
+
+#### Отключение UFW
+
+```bash
+sudo ufw disable
+```
+
+#### Сброс правил
+
+```bash
+sudo ufw reset
+```
+
+#### Логи
+
+В UFW есть опция сохранения логов &ndash; журнал событий. Для запуска необходимо выполнить команду:
+
+```bash
+sudo ufw logging on
+```
+
+UFW поддерживает несколько уровней логирования:
+- `off` &ndash; отключен.
+- `low` &ndash; регистрирует все заблокированные пакеты, не соответствующие заданной политике (с ограничением скорости), а также пакеты, соответствующие зарегистрированным правилам.
+- `medium` &ndash; все то, что при значении `low`. Плюс все разрешенные пакеты, не соответствующие заданной политике, все недопустимые пакеты, и все новые соединения. Все записи ведутся с ограничением скорости.
+- `high` &ndash; работает так же, как и `medium`. Плюс все пакеты с ограничением скорости.
+- `full` &ndash; так же, как и `high`, но без ограничения скорости. 
+
+Чтобы задать уровень, необходимо указать его как параметр:
+
+```bash
+sudo ufw logging high
+```
+
+По умолчанию используется уровень `low`.
+
+Для просмотра списка файлов-логов UFW необходимо выполнить команду:
+
+```bash
+ls /var/log/ufw*
+```
+
+Пример вывода:
+
+```bash
+$ ls /var/log/ufw*
+/var/log/ufw.log  /var/log/ufw.log.1  /var/log/ufw.log.2.gz  /var/log/ufw.log.3.gz  /var/log/ufw.log.4.gz
+```
+
+Просмотр содержимого лога:
+
+```bash
+cat /var/log/ufw.log
+```
+
+### 0.8 Туннелирование SSH
 
 Источники:
-- [Изучаем Docker, часть 3: файлы Dockerfile @ Хабр](https://habr.com/ru/company/ruvds/blog/439980/)
+- [Наглядное руководство по SSH-туннелям @ Хабр](https://habr.com/ru/companies/flant/articles/691388/)
+- [How to Set up SSH Tunneling (Port Forwarding)](https://linuxize.com/post/how-to-setup-ssh-tunneling/)
+- [Что такое ssh agent forwarding](https://dvmn.org/encyclopedia/deploy/ssh-agent-forwarding/)
 
-> TBD
+Туннели SSH &ndash; это зашифрованные TCP-соединения между клиентами и серверами SSH. Трафик входит с одной стороны туннеля и прозрачно выходит с другой. Изначально этот термин относился к туннелям на виртуальных сетевых интерфейсах TUN/TAP, однако сейчас так обычно называют проброс портов SSH.
 
-### 1.7 Многоступенчатая сборка образов
+Сценарии использования туннелей:
+- Предоставление зашифрованных каналов для протоколов, передающих данные "открытым текстом" (без шифрования).
+- Открытие бэкдоров в частные сети.
+- Обход межсетевых экранов (NAT).
+
+#### Проброс портов
+
+Перенаправляет порт из одной системы (локальной или удаленной) в другую.
+
+#### Проброс локального порта
+
+Проброс локальных портов позволяет перенаправить трафик с SSH-клиента на целевой хост через SSH-сервер. Другими словами, можно получить доступ к удаленным сервисам по зашифрованному соединению так, как будто они локальные.
+
+<div align="center">
+  <br>
+  <img src="images/SSH_port_forward_local.svg" width="530" title="SSH port forward local"/>
+    <p style="text-align: center">
+        Рисунок 19 &ndash; Проброс локального порта
+    </p>
+</div>
+
+Примеры использования:
+- доступ к удаленному сервису (Redis, Memcached и т.д.) по внутреннему IP-адресу
+- локальный доступ к ресурсам, размещенным в частной сети
+- прозрачное проксирование запроса к удаленному сервису
+
+```bash
+ssh -L [LOCAL_IP:]LOCAL_PORT:DESTINATION:DESTINATION_PORT [USER@]SSH_SERVER
+```
+
+Параметры:
+- `[LOCAL_IP:]LOCAL_PORT` &ndash; IP-адрес и номер порта локальной машины (клиента). Если `LOCAL_IP` не указан, то используется привязка к `localhost`.
+- `DESTINATION:DESTINATION_PORT` &ndash; IP-адрес (или имя хоста) и порт удаленной машины (пункта назначения).
+- `[USER@]SERVER_IP` &ndash; имя учетной записи и IP-адрес сервера.
+
+> Если в конфиге SSH демона установлено значение порта, отличающееся от $22$, то в команду необходимо добавить флаг `-p <номер SSH порта>`:
+> ```bash
+> ssh -L [LOCAL_IP:]LOCAL_PORT:DESTINATION:DESTINATION_PORT [USER@]SSH_SERVER -p PORT_NUM
+> ```
+
+##### Конфиг SSH
+
+В конфиге SSH демона `/etc/ssh/sshd_config` должна быть включена переадресация TCP (по умолчанию так и должно быть):
+
+```nano
+AllowTcpForwarding yes
+```
+
+> При переадресации портов на интерфейсы, отличные от `127.0.0.1`, в локальной системе необходимо включить GatewayPorts:
+> ```nano
+> GatewayPorts yes
+> ```
+
+#### Проброс удаленного порта
+
+Проброс удаленного порта позволяет направить трафик с SSH-сервера в пункт назначения либо через SSH-клиент, либо через другой удаленный хост. Открывает пользователям в публичных сетях доступ к ресурсам в частных сетях.
+
+<div align="center">
+  <br>
+  <img src="images/SSH_port_forward_remote.svg" width="530" title="SSH port forward remote"/>
+    <p style="text-align: center">
+        Рисунок 20 &ndash; Проброс удаленного порта
+    </p>
+</div>
+
+Примеры использования:
+- открытие доступа к локальному серверу разработки через публичную сеть
+- предоставление доступа с ограничением по IP-адресу к удаленному ресурсу в частной сети
+
+> В данном примере на сервере локально поднят сайт на 80 порту, например. Извне он недоступен. Однако, при пробросе внешнего порта 8080 в локальный 80 данный сайт станет доступен извне по адресу `<IP сервера>:8080`.
+
+```bash
+ssh -R [REMOTE:]REMOTE_PORT:DESTINATION:DESTINATION_PORT [USER@]SSH_SERVER
+```
+
+Параметры:
+- `[REMOTE:]REMOTE_PORT` &ndash; IP-адрес и номер порта удаленной машины (сервера). Если `REMOTE` не указан, то используется привязка ко всем адресам.
+- `DESTINATION:DESTINATION_PORT` &ndash; IP-адрес (или имя хоста) и порт пункта назначения.
+- `[USER@]SERVER_IP` &ndash; имя учетной записи и IP-адрес сервера.
+
+> Если в конфиге SSH демона установлено значение порта, отличающееся от $22$, то в команду необходимо добавить флаг `-p <номер SSH порта>`:
+> ```bash
+> ssh -R [REMOTE:]REMOTE_PORT:DESTINATION:DESTINATION_PORT [USER@]SSH_SERVER -p PORT_NUM
+> ```
+
+##### Конфиг SSH
+
+По умолчанию переадресуемые порты недоступны для доступа из интернета. Для переадресации публичного интернет-трафика на локальный компьютер в `sshd_config` на удаленном сервере необходимо прописать такую строку:
+
+```nano
+GatewayPorts yes
+```
+
+В таком случае переадресуемый порт будет открыт для ***всех адресов***. Если же доступ к порту нужно открыть для определенных адресов, то в конфиге необходимо прописать:
+
+```nano
+GatewayPorts clientspecified
+```
+
+В таком случае, если в качестве `REMOTE` выступает `localhost`, то нужно указать "пустое место":
+
+```bash
+ssh -R :22223:localhost:22 me@server -p 2222
+```
+
+#### Динамический проброс портов
+
+При динамической переадресации портов на SSH-клиенте поднимается SOCKS-прокси для перенаправления TCP-трафика через SSH-сервер на удаленный хост.
+
+<div align="center">
+  <br>
+  <img src="images/SSH_port_forward_dynamic.svg" width="530" title="SSH port forward dynamic"/>
+    <p style="text-align: center">
+        Рисунок 21 &ndash; Динамический проброс портов
+    </p>
+</div>
+
+```bash
+ssh -D [LOCAL_IP:]LOCAL_PORT [USER@]SSH_SERVER
+```
+
+Параметры:
+- `[LOCAL_IP:]LOCAL_PORT` &ndash; IP-адрес и номер порта локальной машины (клиента). Если `LOCAL_IP` не указан, то используется привязка к `localhost`.
+- `[USER@]SERVER_IP` &ndash; имя учетной записи и IP-адрес сервера.
+
+> Если в конфиге SSH демона установлено значение порта, отличающееся от $22$, то в команду необходимо добавить флаг `-p <номер SSH порта>`:
+> ```bash
+> ssh -D [LOCAL_IP:]LOCAL_PORT [USER@]SSH_SERVER -p PORT_NUM
+> ```
+
+##### Конфиг SSH
+
+Для открытия доступа другим интерфейсам к SOCKS-прокси необходимо включить `GatewayPorts` в системе:
+
+```bash
+GatewayPorts yes
+```
+
+Поскольку `GatewayPorts` конфигурируется на SSH-клиенте, вместо `ssh_config` для настройки можно использовать параметры командной строки:
+
+```bash
+ssh -o GatewayPorts=yes -D 7777 ssh_server
+```
+
+#### Проброс системных (privileged) портов
+
+Для пересылки трафика с системных портов ($1$–$1023$) необходимо запустить SSH с правами суперпользователя в системе, на которой открывается порт.
+
+```bash
+sudo ssh -L 80:example.com:80 ssh-server
+```
+
+#### Jump-хосты
+
+Прозрачное подключение к удаленному хосту через промежуточные:
+
+```bash
+ssh -J user1@jump_host user2@remote_host
+```
+
+```bash
+ssh -o "ProxyJump user1@jump_host" user2@remote_host
+```
+
+<div align="center">
+  <br>
+  <img src="images/SSH_port_forward_jump.svg" width="550" title="SSH jump hosts"/>
+    <p style="text-align: center">
+        Рисунок 22 &ndash; Jump-хосты
+    </p>
+</div>
+
+Устанавливает SSH-соединение с jump-хостом и переадресуют трафик на удаленный хост.
+
+Подключается к удаленному хосту через промежуточный jump-хост. Приведенная выше команда должна сработать сразу, если у jump-хоста уже есть SSH-доступ к удаленному хосту. Если нет, можно использовать `agent forwarding` для проброса SSH-ключа с локального компьютера на удаленный хост.
+
+Для этого в конфиг необходимо добавить:
+
+```nano
+ForwardAgent yes
+```
+
+Как только произойдет отключение от сервера, ключи "пропадут" с сервера.
+
+### 0.9 Обратное туннелирование SSH
 
 Источники:
-- [Изучаем Docker, часть 4: уменьшение размеров образов и ускорение их сборки @ Хабр](https://habr.com/ru/companies/ruvds/articles/440658/)
-- [Multi-stage builds @ Docker](https://docs.docker.com/build/building/multi-stage/)
+- [Как получить доступ к серверу Linux за NAT через обратный туннель SSH](https://rus-linux.net/MyLDP/sec/reverse-SSH-tunnel.html)
+- [How to Set up SSH Tunneling (Port Forwarding)](https://linuxize.com/post/how-to-setup-ssh-tunneling/)
+- [Directions for setting up a reverse ssh tunnel as a systemd service in Linux](https://github.com/axthosarouris/reverse-ssh-tunnel)
 
-> TBD
+Допустим, Linux-сервер размещен в домашней или в рабочей сети, которая находится за NAT маршрутизатора или защищена брандмауэром. То есть извне доступа к этой машине нет, а доступ к машине нужен. Как это настроить? Возможным вариантом будет, безусловно, перенаправление на порт SSH. Однако, перенаправление портов может оказаться более сложным в случае, если среда с несколькими вложенными NAT. Кроме того, на выбранное решение могут оказывать влияние различные ограничения, устанавливаемые интернет-провайдерами, например, ограничительные брандмауэры провайдеров, которые блокируют перенаправление портов или NAT с трансляцией адресов, что позволяет пользователям одновременно пользоваться одними и теми же адресами IPv4.
 
-`--no-cache-filter`
+> **NAT** (***Network Address Translation*** &ndash; "преобразование сетевых адресов") &ndash; это механизм в сетях TCP/IP, позволяющий преобразовывать IP-адреса транзитных пакетов.
 
-Buildkit использует граф зависимости (dependency graph). Если промежуточный этап сборки далее нигде не используется, то он будет пропущен при сборке: [Dockerfile not executing second stage](https://stackoverflow.com/questions/65235815/dockerfile-not-executing-second-stage).
+Одной из альтернатив перенаправлению портов SSH является ***обратное туннелирование SSH***. Концепция реверсного туннелирования SSH сравнительно проста. Для этого понадобится еще один хост (так называемый "хост релея"), находящийся за пределами защищенной сети, к которому можно подключиться через SSH из защищенной сети и сети, в которой находится клиент. В качестве хоста релея может выступать отдельный экземпляр виртуального частного сервера VPS, использующего публичный IP-адрес. Далее нужно настроить постоянный SSH туннель от сервера в защищенной сети на хост общественного релея. Благодаря этому возможно подключаться "в обратном направлении" к серверу в защищенной сети с хоста релея (именно поэтому такой туннель называется "обратным"). До тех пор пока хост релея доступен, существует возможность подключения к искомому серверу из любого места, причем независимо от того, используется ли в сети ограничивающий NAT или брандмауэр.
 
-### 1.8 Пример докер-файла
+<div align="center">
+  <br>
+  <img src="images/SSH_port_forward_reverse.svg" width="490" title="SSH reverse tunnel"/>
+    <p style="text-align: center">
+        Рисунок 23 &ndash; Обратное туннелирование SSH
+    </p>
+</div>
 
-Сборка OpenCV из исходников.
+#### Настройка сервера
 
-Скрипт для установки переменных `build_env.sh`:
-
-```bash
-#!/bin/sh
-# Read in the file of environment settings
-
-export py3_ver_mm_wod=$(python3 -c "import sys; print(\"\".join(map(str, sys.version_info[:2])))")
-export py3_ver_mm=$(python3 -c "import sys; print(\".\".join(map(str, sys.version_info[:2])))")
-export py3_ver_mmm=$(python3 -c "import sys; print(\".\".join(map(str, sys.version_info[:3])))")
-echo "Environment vars for OpenCV build: ${py3_ver_mm_wod} ${py3_ver_mm} ${py3_ver_mmm}"
-
-# Then run the CMD
-# exec "$@"
-```
-
-Добавим права на выполнение:
+На сервере вместо утилиты `ssh` воспользуемся утилитой `autossh`. `autossh` отслеживает SSH соединение, и если оно разрывается, переподключает. Установка:
 
 ```bash
-chmod +x build_env.sh
+sudo apt install autossh
 ```
 
-Докер-файл `OpenCVDockerFile`:
+Для автоматического подключения сервера к серверу-релею необходимо создать службу в `/etc/systemd/system`. Назовем её `rtunnel.service`. Содержимое `/etc/systemd/system/rtunnel.service`:
 
-```dockerfile
-FROM ubuntu:20.04
-WORKDIR /
-# Update and upgrade
-RUN apt update && apt -y upgrade
+```nano
+[Unit]
+Description = Reverse ssh tunnel
+After =  network-online.target
+#Requires
 
-# Create dir
+[Service]
+User = root
+#Type = forking
+Environment=AUTOSSH_GATETIME=0
+ExecStart = /usr/bin/autossh -M 0 -q -N -o "PubKeyAuthentication=yes" -o "StrictHostKeyChecking=false" -o "PasswordAuthentication=no" -o "ExitOnForwardFailure=yes" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3"  -i /home/ruser/.ssh/id_ed25519_ruser -R relay-server.net:10222:localhost:4444 ruser@relay-server.net -p 7777
+ExecStop= /usr/bin/killall autossh
+RestartSec=5
+Restart=always
 
-RUN mkdir /usr/local/Dev
-
-# Python 3
-RUN apt install -y curl python3-testresources python3-dev wget gnupg2 software-properties-common
-WORKDIR /usr/local/Dev/
-RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-RUN python3 get-pip.py
-
-# OpenCV x.x.x with non free modules
-
-RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections
-
-## GStreamer
-
-RUN apt -y install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-doc gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
-RUN apt -y install ubuntu-restricted-extras libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev libgstreamer-plugins-bad1.0-0 libgstreamer-plugins-base1.0-0 libgstreamer-plugins-base1.0-dev
-
-## OpenCV build dependencies
-
-RUN apt -y install build-essential
-RUN apt -y install cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev
-RUN apt -y install python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libdc1394-22-dev
-RUN apt -y install python3-pip python3-numpy
-
-## OpenCV
-
-RUN apt -y install build-essential cmake unzip pkg-config
-RUN apt -y install libjpeg-dev libpng-dev libtiff-dev
-RUN apt -y install libavcodec-dev libavformat-dev libswscale-dev libv4l-dev
-RUN apt -y install libxvidcore-dev libx264-dev
-RUN apt -y install libgtk-3-dev
-RUN apt -y install libatlas-base-dev gfortran
-RUN apt -y install python3-dev
-
-ARG ocv_ver
-
-RUN wget -O opencv.zip https://github.com/opencv/opencv/archive/${ocv_ver}.zip
-RUN wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/${ocv_ver}.zip
-RUN unzip opencv.zip
-RUN unzip opencv_contrib.zip
-
-COPY build_env.sh /usr/local/Dev
-RUN chmod +x /usr/local/Dev/build_env.sh
-RUN cd /usr/local/Dev/ && ./build_env.sh
-
-WORKDIR /usr/local/Dev/opencv-${ocv_ver}
-RUN mkdir build
-WORKDIR /usr/local/Dev/opencv-${ocv_ver}/build
-
-### Update numpy
-
-RUN pip3 install -U numpy
-
-RUN . /usr/local/Dev/build_env.sh && cmake -D CMAKE_BUILD_TYPE=RELEASE \
--D CMAKE_INSTALL_PREFIX=/usr/local/OpenCV-${ocv_ver} \
--D OPENCV_SKIP_PYTHON_LOADER=OFF \
--D OPENCV_PYTHON3_INSTALL_PATH=/usr/local/OpenCV-${ocv_ver}/lib/python${py3_ver_mm}/site-packages \
--D OPENCV_PYTHON3_VERSION=${py3_ver_mmm} \
--D BUILD_opencv_python2=OFF \
--D BUILD_opencv_python3=ON \
--D BUILD_opencv_python_bindings_generator=ON \
--D PYTHON_DEFAULT_EXECUTABLE=$(which python3) \
--D PYTHON3_EXECUTABLE=$(which python3) \
--D PYTHON3_INCLUDE_DIR=$(python3 -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())") \
--D PYTHON3_PACKAGES_PATH=$(python3 -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())") \
--D PYTHON3_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython${py3_ver_mmm}.so \
--D PYTHON3_NUMPY_INCLUDE_DIRS=$(python3 -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/numpy/core/include \
--D WITH_OPENCL=ON \
--D WITH_OPENMP=ON \
--D WITH_CUDA=OFF \
--D WITH_CUDNN=OFF \
--D WITH_NVCUVID=OFF \
--D WITH_CUBLAS=OFF \
--D WITH_GSTREAMER=ON \
--D ENABLE_FAST_MATH=1 \
--D CUDA_FAST_MATH=0 \
--D BUILD_opencv_cudacodec=OFF \
--D INSTALL_PYTHON_EXAMPLES=ON \
--D INSTALL_C_EXAMPLES=ON \
--D OPENCV_ENABLE_NONFREE=ON \
--D OPENCV_EXTRA_MODULES_PATH=/usr/local/Dev/opencv_contrib-${ocv_ver}/modules \
--D BUILD_EXAMPLES=ON ..
-
-RUN make -j${build_thread_count}
-RUN make install
-RUN ldconfig
-
-RUN . /usr/local/Dev/build_env.sh && ln -sf /usr/local/OpenCV-${ocv_ver}/lib/python$py3_ver_mm/site-packages/cv2/python-${py3_ver_mm}/$(ls /usr/local/OpenCV-${ocv_ver}/lib/python$py3_ver_mm/site-packages/cv2/python-${py3_ver_mm}/) /usr/local/lib/python${py3_ver_mm}/dist-packages/cv2.so
-
-RUN echo $(python3 -c "import cv2 as cv; print(cv.__version__)")
-
-CMD [ "bash" ]
+[Install]
+WantedBy = multi-user.target
 ```
 
-Скрипт для сборки `build_ocv_ubuntu_20.04.sh` (`chmod +x`):
+Параметры `autossh`:
+- `-M 0`: номер порта на сервере-релее, для которого будет осуществляться мониторинг. Данный порт будет использоваться для обмена тестовыми данными при контроле сессии SSH. Этот порт не должен на сервере-релее использоваться какой-либо другой программой.
+- `-q`: режим `quiet mode`, отключает вывод диагностических сообщений и предупреждений.
+- `-N`: отключает выполнение удаленной команды. Используется для проброса портов.
+- `-o`: указывает параметр, для которого не предусмотрен флаг в `ssh` утилите. Используется синтаксис как в конфигурационном файле демона `sshd`.
+
+Параметры сервера-релея:
+- Адрес: `relay-server.net`
+- SSH порт: `7777`
+- Имя учетной записи: `ruser`
+
+Параметры сервера:
+- Имя учетной записи: `ruser`
+- SSH порт: `4444`
+- Пробрасываемый удаленный SSH порт: `10222`
+- SSH ключ для соединения с сервером-релеем: `id_ed25519_ruser`
+
+В качестве сервера-релея выступает сервер по адресу `relay-server.net`, на который мы стучимся под учетной записью `ruser` через порт `7777` с использованием ключа `/home/ruser/.ssh/id_ed25519_ruser`. Мы пробрасываем удаленный порт `10222` с `relay-server.net` в `localhost` на порт `4444` (`localhost` в данном случае &ndash; искомый сервер, находящийся за NAT и не имеющий публичный IP, к которому внутри защищенной сети можно подключиться через SSH на порт `4444`). Поэтому когда мы (клиент) будем подключаться к серверу-релею через порт `10222`, сервер-релей перенаправит (обратно) SSH соединение на искомый сервер на порт `4444`. В данном случае для простоты публичный ключ `id_ed25519_ruser` находится на сервере и сервере-релее, так же он прописан в `authorized_keys` на обоих серверах.
+
+Если на серверах установлен UFW, то необходимо открыть соответствующие порты.
+
+После создания службы необходимо перезапустить системный демон:
 
 ```bash
-echo Setting env vars
-
-export ocv_ver=4.5.0
-
-echo Building docker
-docker build --tag ocv_ubuntu_20.04 --build-arg ocv_ver=$ocv_ver --build-arg build_thread_count=8 -f OpenCVDockerFile .
+sudo systemctl daemon-reload
 ```
 
-Запускаем процесс сборки:
+Запустить службу `rtunnel`:
 
 ```bash
-./build_ocv_ubuntu_20.04.sh
+sudo systemctl start rtunnel
 ```
+
+Проверить подключение:
+
+```bash
+ssh -p 10222 ruser@relay-server.net -i C:\Users\<имя юзера>\.ssh\id_ed25519_ruser
+```
+
+Если соединение установлено, то можно включить автозапуск службы при загрузке ОС:
+
+```bash
+sudo systemctl enable rtunnel
+```
+
+> В службу `rtunnel` можно прописать несколько пробросов удаленных портов: для каждого подключения с разных учетных записей на сервере (искомый, за NAT) необходимо пробросить отдельный удаленный порт. Другими словами, нельзя подключиться через один и тот же удаленный порт с разных учетных записей сервера за NAT.
+> <div align="center">
+>  <br>
+>  <img src="images/SSH_port_forward_reverse_multiple.svg" width="780" title="SSH reverse tunnel multiple"/>
+>    <p style="text-align: center">
+>        Рисунок 24 &ndash; Обратное туннелирование SSH, несколько туннелей
+>    </p>
+> </div>
+>
+> Публичные ключи `user1` и `user2` должны быть прописаны в `authorized_keys` на сервере `secret-server`, публичный ключ `ruser` должен быть прописан в `authorized_keys` на сервере `relay-server`.
+
+### 0.10 Файл конфигурации config
+
+Для организации множества подключений к различным хостам можно использовать конфигурационный файл `config`, который необходимо создать в папке `.ssh`. Файл конфигурации SSH клиента представляет собой текстовый файл, в котором перечисляются настройки для различных хостов.
+
+Пример содержимого:
+
+```nano
+Host *
+  ForwardAgent yes
+  ForwardX11 yes
+  ForwardX11Trusted yes
+Host gitlab.com
+  IdentityFile ~/.ssh/id_rsa_gitlab
+  User git
+  Port 22
+Host github.com
+  IdentityFile ~/.ssh/id_rsa_github
+  User git
+  Port 22
+Host Nano
+  HostName jnano
+  Port 2222
+  User ud
+  IdentityFile ~/.ssh/id_rsa_jnano
+Host udrpi3, 10.0.0.29
+  HostName udrpi3
+  User pi
+  IdentityFile ~/.ssh/id_rsa_udrpi3
+```
+
+Первый блок устанавливает параметры для всех подключений:
+- `ForwardAgent`: уже знакомый параметр проброса ключа через промежуточные хосты.
+- `ForwardX11`: проброс "иксов" &ndash; графического окружения для вывода графических приложений. Аналогично использованию ключа `-X`: `ssh -X your_user@your_server`.
+- `ForwardX11Trusted`: понижает уровень безопасности или, другими словами, повышает уровень доверия к клиенту &ndash; "trusted client". В "untrusted" варианте, если проброшенное приложение нарушает настройки безопасности (например, осуществляет захват экрана &ndash; скриншоты, логирование нажатий клавиш клавиатуры и т.п.), то выскочит ошибка. В доверенном варианте такие действия не отлавливаются. Аналогично использованию ключа `-Y`: `ssh -Y your_user@your_server`.
+
+> X11 forwarding &ndash; это механизм, позволяющий отображать на локальном клиентском компьютере графические интерфейсы X11 программ, запущенных на удаленном Unix/Linux сервере. SSH имеет возможность безопасного туннелирования X11 соединений, так что сеансы X11 forwarding-а шифруются и инкапсулируются.  
+> 
+> Обычно не рекомендуется всегда работать с «ForwardX11 yes». Поэтому, если вы хотите использовать свои SSH-соединения с повышенной безопасностью, лучше всего сделать следующее:
+> - Не прописывать «ForwardX11 yes» в `~/.ssh/config` файл.
+> - Использовать "ForwardingX11" только когда это необходимо, в явном виде `ssh -X your_user@your_server`.
+> Подробнее здесь: [What is the difference between `ssh -Y` (trusted X11 forwarding) and `ssh -X` (untrusted X11 forwarding)?](https://askubuntu.com/questions/35512/what-is-the-difference-between-ssh-y-trusted-x11-forwarding-and-ssh-x-u)/
+
+```nano
+Host gitlab.com
+  IdentityFile ~/.ssh/id_rsa_gitlab
+  User git
+  Port 22
+```
+
+Параметры:
+- `Host`: указывает, что далее идут настройки для определённого хоста или нескольких хостов (псевдоним аля метка).
+- `HostName`: реальное имя хоста.
+- `IdentityFile`: путь к приватному ключу.
+- `User`: имя учетной записи для подключения.
+- `Port`: номер SSH порта.
+
+Для примера выше можно проверить SSH подключение:
+
+```bash
+ssh -T gitlab.com
+```
+
+### 0.11 Разное
+
+#### Форматы ключей
+
+При попытке подключения в PuTTY или WinSCP с использованием ключей, сгенерированных через OpenSSH, выскочит следующее сообщение:
+
+<div align="center">
+  <br>
+  <img src="images/OpenSSH_PuTTY_ppk.png" width="482" title="SSH key convertion"/>
+    <p style="text-align: center">
+        Рисунок 25 &ndash; Конвертация ключа из формата OpenSSH в PPK
+    </p>
+</div>
+
+#### Конфиг демона `sshd`
+
+В конфиге помимо глобальных настроек можно указать настройки для отдельных учетных записей, переопределяющие глобальные. Для этого в синтаксисе конфига используется конструкция `Match`:
+
+```nano
+...
+AuthorizedKeysFile /home/ud/.ssh/authorized_keys
+...
+Match User ruser
+  AuthorizedKeysFile /home/ruser/.ssh/authorized_keys
+```
+
+`Match` означает условный блок, который переопределяет параметры при выполнении условия. Критерии, которые можно использовать в блоке `Match`: `User`, `Group`, `Host`, `LocalAddress`, `LocalPort`, `RDomain`, `Address`.
+
+Подробнее можно посмотреть в руководстве `man sshd_config` ([sshd_config(5) — Linux manual page](https://man7.org/linux/man-pages/man5/sshd_config.5.html)) и `man ssh_config` ([ssh_config(5) — Linux manual page](https://www.man7.org/linux/man-pages/man5/ssh_config.5.html)).

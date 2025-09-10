@@ -1,10 +1,10 @@
 # Лабораторная работа №3. Клиент-серверное приложение с использованием Docker
 
 Лекции:
-- [SSH](../../lectures/lecture_0/lecture_0.md)
-- [Контейнеризация. Docker](../../lectures/lecture_1/lecture_1.md)
-- [Мультиконтейнерные приложения. Docker Compose](../../lectures/lecture_2/lecture_2.md)
-- [Клиент-серверное приложение с использованием Docker](lectures/lecture_3/lecture_3.md) **[WIP]**
+- [SSH](../../lectures/lecture_1/lecture_1.md)
+- [Контейнеризация. Docker](../../lectures/lecture_2/lecture_2.md)
+- [Мультиконтейнерные приложения. Docker Compose](../../lectures/lecture_3/lecture_3.md)
+- [Клиент-серверное приложение с использованием Docker](lectures/lecture_3/lecture_4.md) **[WIP]**
 
 ## Задание
 
@@ -73,7 +73,7 @@ TcpTestSucceeded        : True
 Концептуальная схема приложения изображена на рисунке 1.
 
 <div align="center">
-  <img src="../../lectures/lecture_3/images/client_server_docker_app_1.svg" width="1000" title="Client-server app architecture"/>
+  <img src="../../lectures/lecture_4/images/client_server_docker_app_1.svg" width="1000" title="Client-server app architecture"/>
   <p style="text-align: center">
     Рисунок 1 &ndash; Концептуальная схема приложения
   </p>
@@ -82,7 +82,7 @@ TcpTestSucceeded        : True
 Взаимодействие между клиентом и сервером должно осуществляться в асинхронном режиме. Для этого будет использоваться ***брокер сообщений***, экземпляры которого будут общаться через SSH туннель. Более подробная схема изображена на рисунке 2.
 
 <div align="center">
-  <img src="../../lectures/lecture_3/images/client_server_docker_app_2.svg" width="1000" title="Client-server app architecture"/>
+  <img src="../../lectures/lecture_4/images/client_server_docker_app_2.svg" width="1000" title="Client-server app architecture"/>
   <p style="text-align: center">
     Рисунок 2 &ndash; Схема взаимодействия основных модулей
   </p>
