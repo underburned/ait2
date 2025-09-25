@@ -3,7 +3,7 @@
 ## Лекции
 
 1. [Организация удаленного доступа с использованием SSH](lectures/lecture_1/lecture_1.md)
-2. [Контейнеризация. Docker](lectures/lecture_2/lecture_2.md) **[возможно обновление]**
+2. [Контейнеризация. Docker](lectures/lecture_2/lecture_2.md)
 3. [Мультиконтейнерные приложения. Docker Compose](lectures/lecture_3/lecture_3.md) **[возможно обновление]**
 4. [Клиент-серверное приложение с использованием Docker](lectures/lecture_4/lecture_4.md) **[в процессе доработки]**
 5. **[TBA]**
