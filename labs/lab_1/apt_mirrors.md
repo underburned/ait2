@@ -90,7 +90,7 @@ deb http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
 
 - `deb` &ndash; означает тип репозитория, в данном случае Debian-based реп (Ubuntu основана на Debian)
 - `http://archive.ubuntu.com/ubuntu/` &ndash; вэб-адрес репа
-- `jammy` &ndash; кодовое обозначение версии дистрибутива Ubuntu 22.04
+- `jammy` &ndash; кодовое обозначение версии дистрибутива Ubuntu 22.04 (Ubuntu 24.04 &ndash; `noble`)
 - `main restricted universe multiverse`:
   - `main` &ndash; официально поддерживаемое свободное ПО (*Officially Supported, Open-Source Software*)
   - `restricted` &ndash; поддерживаемое ПО, но которое не распространяются по свободной лицензии (*Officially Supported, Closed-Source Software*)
