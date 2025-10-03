@@ -113,6 +113,11 @@ Docker &ndash; это открытая платформа для разрабо�
 sudo apt remove docker docker-engine docker.io containerd runc
 ```
 
+> В Ubuntu 24.04 в apt отсутствует пакет `docker-engine`:
+> ```bash
+> sudo apt remove docker docker.io containerd runc
+> ```
+
 Добавляем репозиторий:
 
 ```bash
@@ -123,6 +128,12 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o 
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+
+Обновляем снова список пакетов:
+
+```bash
+sudo apt update
 ```
 
 Устанавливаем `Docker Engine`:
@@ -146,11 +157,14 @@ sudo docker run hello-world
 ```bash
 sudo groupadd docker
 sudo usermod -aG docker $USER
+mkdir /home/"$USER"/.docker
 sudo chown "$USER":"$USER" /home/"$USER"/.docker -R
 sudo chmod g+rwx "$HOME/.docker" -R
 ```
 
-Необходимо разлогиниться и залогиниться обратно. Проверка:
+> Необходимо разлогиниться и залогиниться обратно.
+
+Проверка:
 
 ```bash
 docker run hello-world
