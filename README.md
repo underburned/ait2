@@ -11,7 +11,7 @@
 ## Лабораторные работы
 
 1. [Docker. Сборка OpenCV](labs/lab_1/lab_1.md)
-2. Еще одна лаба по Docker **[в процессе]**
+2. [Docker. Сборка OpenMVG + OpenMVS](labs/lab_2/lab_2.md)
 3. [Docker Compose](labs/lab_3/lab_3.md) **[возможно обновление]**
 4. [Клиент-серверное приложение с использованием Docker](labs/lab_4/lab_4.md) **[возможно обновление]**
 5. **[TBA]**
