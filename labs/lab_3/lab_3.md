@@ -1,91 +1,34 @@
-# Лабораторная работа №3. Клиент-серверное приложение с использованием Docker
+# Лабораторная работа №3. Docker Compose
 
 Лекции:
 - [SSH](../../lectures/lecture_1/lecture_1.md)
 - [Контейнеризация. Docker](../../lectures/lecture_2/lecture_2.md)
 - [Мультиконтейнерные приложения. Docker Compose](../../lectures/lecture_3/lecture_3.md)
-- [Клиент-серверное приложение с использованием Docker](lectures/lecture_3/lecture_4.md) **[WIP]**
 
 ## Задание
 
-### Подготовительный этап.
+Запустить предобученную нейронку с использованием `pytorch` внутри контейнера. Для создания контейнера использовать `Docker Compose`.
 
-Пробрасывание порта из контейнера можно потестить TCP-соединением через `exposed port`: поднять простенький контейнер (с установленным `nmap` через `apt` или `snap`) через docker или docker compose с заданной сетью, на самом сервере в терминале выполнить команду:
-
-```bash
-nmap -p <exposed port> <container local IP>
-```
-
-Если ок, то попробовать пинги со своей машины до itkubrik.ru:<exposed port> (эти порты должны быть открыты, но все равно можно проверить).
-
-> Локальный порт внутри контейнера может быть любой, как и IP адрес. Exposed порт и remote port совпадают, дабы не было путаницы.
-
-Пример успешного вывода (Linux):
-
-```bash
-$ nmap -p <port> itkubrik.ru
-Starting Nmap 7.80 ( https://nmap.org ) at 2024-12-11 09:19 UTC
-Nmap scan report for itkubrik.ru (xxx.xxx.xxx.xxx)
-Host is up (0.046s latency).
-
-PORT      STATE SERVICE
-<port>/tcp open  unknown
-
-Nmap done: 1 IP address (1 host up) scanned in 0.54 seconds
-```
-
-Ключевое &ndash; ***state: open***. В случае неуспеха (порт закрыт) значение `state` будет `closed`.
-
-В Windows можно воспользоваться PowerShell'ом:
-
-```powershell
-Test-NetConnection -Port <exposed port> -ComputerName itkubrik.ru -InformationLevel Detailed
-
-ComputerName            : itkubrik.ru
-RemoteAddress           : xxx.xxx.xxx.xxx
-RemotePort              : xxxxx
-NameResolutionResults   : xxx.xxx.xxx.xxx
-MatchingIPsecRules      :
-NetworkIsolationContext : Internet
-IsAdmin                 : False
-InterfaceAlias          : Ethernet
-SourceAddress           : 10.0.0.2
-NetRoute (NextHop)      : 10.0.0.1
-TcpTestSucceeded        : True
-```
-
-Желаемый результат: `TcpTestSucceeded: True`. Если порт закрыт, то `False`.
-
-### Боевая задача.
-
-Цель &ndash; создание клиент-серверного приложения удаленной обработки данных.  
-В качестве тонкого клиента приложения будет выступать десктопный графический интерфейс, реализуемый с использованием фреймворка Qt (PyQt6). Данное приложение должно реализовать следующий функционал:
-- загрузка исходных данных (например, изображения) и их отображение в GUI
-- передача загруженных данных на сервер для последующей обработки
-- получение обработанных данных
-- вывод пользователю сообщения о завершении обработки и отображение результатов в GUI
-
-Серверная часть должна реализовать следующий функционал внутри докер-контейнера:
-- прием данных на обработку
-- обработка данных
-- передача обработанных данных обратно клиенту  
-
-Концептуальная схема приложения изображена на рисунке 1.
-
-<div align="center">
-  <img src="../../lectures/lecture_4/images/client_server_docker_app_1.svg" width="1000" title="Client-server app architecture"/>
-  <p style="text-align: center">
-    Рисунок 1 &ndash; Концептуальная схема приложения
-  </p>
-</div>
-
-Взаимодействие между клиентом и сервером должно осуществляться в асинхронном режиме. Для этого будет использоваться ***брокер сообщений***, экземпляры которого будут общаться через SSH туннель. Более подробная схема изображена на рисунке 2.
-
-<div align="center">
-  <img src="../../lectures/lecture_4/images/client_server_docker_app_2.svg" width="1000" title="Client-server app architecture"/>
-  <p style="text-align: center">
-    Рисунок 2 &ndash; Схема взаимодействия основных модулей
-  </p>
-</div>
-
-> Вместо десктопного GUI и/или схемы с брокером сообщений можно реализовать Web-интерфейс с использованием REST API. Серверная часть должна быть реализована в докер-образе и запущена в контейнере.
+1. Собрать контейнер с установленным PyTorch (CPU или GPU версия).
+   > Проще всего собрать контейнер на базе подготовленного образа с Docker Hub, например, 
+    [pytorch:2.1.0-cuda11.8-cudnn8-devel](https://hub.docker.com/layers/pytorch/pytorch/2.1.0-cuda11.8-cudnn8-devel/images/sha256-558b78b9a624969d54af2f13bf03fbad27907dbb6f09973ef4415d6ea24c80d9?context=explore).
+    Можно и из обычного образа, например, Убунты. Тогда нужно будет установить CUDA определенной версии 
+  при сборке контейнера, а на самом хосте поставить [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).  
+   > 
+   > На сервере **NVIDIA Container Toolkit** *уже установлен*.  
+   > Для запуска на сервере, естественно, лучше собрать образ с GPU версией.  
+   > 
+   > P.S.: PyTorch или TensorFlow, в целом, неважно.
+2. Написать [скрипт обработки изображений с использованием нейросети](sub_task_pytorch.md). 
+   Можно выбрать любую понравившуюся модель/задачу обработки изображения нейросетью.  
+   > У [niconielsen32](https://github.com/niconielsen32) в репах есть целая подборка различных заготовок по 
+     [Computer Vision](https://github.com/niconielsen32/ComputerVision), например, 
+     [вычисление карты глубин по изображению](https://github.com/niconielsen32/ComputerVision/blob/master/MonocularDepth/midasDepthMap.py).
+   > 
+3. Запустить контейнер командой:
+   ```bash
+   docker compose -f <имя_конфига.yaml> up
+   ```
+4. Запустить скрипт с реализованным алгоритмом в контейнере в примонитрованной внутри контейнера папке. 
+   Результат обработки сохранить в локальной директории контейнера.
+5. Убедиться в появлении результата в директории хоста.
