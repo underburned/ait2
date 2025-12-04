@@ -34,7 +34,7 @@
 Концептуальная схема приложения изображена на рисунке 1.
 
 <div align="center">
-  <img src="images/client_server_docker_app_1.svg" width="1000" title="Client-server app architecture"/>
+  <img src="images/client_server_docker_app_1.svg" width="680" title="Client-server app architecture"/>
   <p style="text-align: center">
     Рисунок 1 &ndash; Концептуальная схема приложения
   </p>
@@ -43,7 +43,7 @@
 Взаимодействие между клиентом и сервером должно осуществляться в асинхронном режиме. Для этого будет использоваться ***брокер сообщений***, экземпляры которого будут общаться через SSH туннель. Более подробная схема изображена на рисунке 2.
 
 <div align="center">
-  <img src="images/client_server_docker_app_2.svg" width="1000" title="Client-server app architecture"/>
+  <img src="images/client_server_docker_app_2.svg" width="800" title="Client-server app architecture"/>
   <p style="text-align: center">
     Рисунок 2 &ndash; Схема взаимодействия основных модулей
   </p>
