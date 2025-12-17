@@ -92,6 +92,9 @@ pip install dramatiq[redis] numpy pyqt6 sshtunnel
   + [Kivy](https://kivy.org/)
 
 #### Web GUI
+
+- [REST API](rest_api.md)
+
 [TBD]
 - [Введение в Flask]
 - [Введение в FastAPI](fastapi_intro.md)
